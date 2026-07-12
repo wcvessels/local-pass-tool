@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LocalPass — standalone reference</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background: linear-gradient(140deg, #46536b 0%, #6d6a75 45%, #9b8677 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 20px; padding: 48px 24px; position: relative; overflow-x: hidden;
+  }
+  .mono { font-family: "Cascadia Mono", Consolas, ui-monospace, monospace; }
+  input { font-family: inherit; }
+
+  /* decorative desktop detail behind the glass so translucency reads */
+  .bg-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .bg-glow {
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(420px 300px at 34% 28%, rgba(255,236,200,0.55), rgba(255,236,200,0) 70%),
+      radial-gradient(360px 360px at 68% 62%, rgba(120,180,235,0.45), rgba(120,180,235,0) 70%),
+      radial-gradient(300px 220px at 52% 84%, rgba(90,60,110,0.5), rgba(90,60,110,0) 70%);
+  }
+  .bg-streak-1 { position: absolute; left: 38%; top: 12%; width: 200px; height: 460px; transform: rotate(24deg);
+    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.22) 50%, rgba(255,255,255,0) 100%); }
+  .bg-streak-2 { position: absolute; left: 58%; top: -6%; width: 90px; height: 560px; transform: rotate(24deg);
+    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0) 100%); }
+
+  /* ---- glass window shell ---- */
+  .card {
+    position: relative; width: 356px; border-radius: 12px; padding: 12px 16px 14px;
+    display: flex; flex-direction: column; gap: 11px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+    backdrop-filter: blur(18px) saturate(1.25);
+    -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  }
+  .card.dark  { background: linear-gradient(180deg, rgba(40,45,52,0.52), rgba(17,20,24,0.62)); border: 1px solid rgba(255,255,255,0.16); }
+  .card.light { background: linear-gradient(180deg, rgba(255,255,255,0.45), rgba(236,240,244,0.55)); border: 1px solid rgba(255,255,255,0.65); box-shadow: 0 16px 40px rgba(20,25,35,0.35); }
+
+  .titlebar { display: flex; align-items: center; gap: 2px; height: 24px; }
+  .brand { flex: 1; font-size: 12px; font-weight: 600; letter-spacing: 2px; }
+  .dark  .brand { color: #f2f3f5; }
+  .light .brand { color: #24262a; }
+
+  .iconbtn {
+    width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px;
+    font-size: 11px; cursor: pointer; user-select: none; transition: background .12s, color .12s;
+  }
+  .dark  .iconbtn:hover { background: rgba(255,255,255,0.10); }
+  .light .iconbtn:hover { background: rgba(31,34,38,0.10); }
+
+  .divider { border-top: 1px solid; }
+  .dark  .divider { border-color: rgba(255,255,255,0.09); }
+  .light .divider { border-color: rgba(31,34,38,0.12); }
+
+  .ctlrow { display: flex; align-items: center; gap: 10px; }
+  .label { font-size: 10px; letter-spacing: 1.2px; font-weight: 600; }
+  .dark  .label { color: #b2b8be; }
+  .light .label { color: #4f565e; }
+
+  .numinput {
+    width: 34px; height: 26px; border-radius: 4px; text-align: center; outline: none; padding: 0;
+    font-size: 12px;
+  }
+  .dark  .numinput { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18); color: #f2f3f5; }
+  .dark  .numinput:focus { border-color: rgba(255,255,255,0.5); }
+  .light .numinput { background: rgba(255,255,255,0.55); border: 1px solid rgba(31,34,38,0.25); color: #24262a; }
+  .light .numinput:focus { border-color: rgba(31,34,38,0.55); }
+
+  .slider { position: relative; flex: 1; height: 16px; display: flex; align-items: center; cursor: ew-resize; touch-action: none; }
+  .track { position: absolute; left: 0; right: 0; height: 2px; }
+  .dark  .track { background: rgba(255,255,255,0.18); }
+  .light .track { background: rgba(31,34,38,0.22); }
+  .fill { position: absolute; left: 0; height: 2px; }
+  .dark  .fill { background: #eef1f4; }
+  .light .fill { background: #23262b; }
+  .knob { position: absolute; width: 10px; height: 10px; border-radius: 2px; }
+  .dark  .knob { background: #eef1f4; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+  .light .knob { background: #23262b; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+
+  .segbar { display: flex; border-radius: 6px; overflow: hidden; }
+  .dark  .segbar { border: 1px solid rgba(255,255,255,0.16); }
+  .light .segbar { border: 1px solid rgba(31,34,38,0.25); }
+  .seg { height: 30px; padding: 0 6px; display: grid; place-items: center; font-size: 11.5px; cursor: pointer; user-select: none; }
+
+  .actions { display: flex; gap: 8px; }
+  .generate { flex: 1; height: 30px; border-radius: 4px; display: grid; place-items: center; font-size: 11px; font-weight: 700; letter-spacing: 1.4px; cursor: pointer; user-select: none; transition: background .12s; }
+  .dark  .generate { background: #eef1f4; color: #16181c; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+  .dark  .generate:hover { background: #ffffff; }
+  .light .generate { background: #23262b; color: #f7f8f9; box-shadow: 0 2px 6px rgba(20,25,35,0.3); }
+  .light .generate:hover { background: #101215; }
+  .generate:active { transform: translateY(1px); }
+  .clearbtn { width: 76px; height: 30px; border-radius: 4px; display: grid; place-items: center; font-size: 11px; font-weight: 600; letter-spacing: 1.4px; user-select: none; }
+  .dark  .clearbtn { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18); color: #d7dbdf; }
+  .dark  .clearbtn:hover { background: rgba(255,255,255,0.12); }
+  .light .clearbtn { background: rgba(255,255,255,0.40); border: 1px solid rgba(31,34,38,0.20); color: #4f565e; }
+  .light .clearbtn:hover { background: rgba(255,255,255,0.65); }
+
+  .results { display: flex; flex-direction: column; max-height: 350px; overflow-y: auto; overscroll-behavior: contain;
+    margin-right: -14px; padding-right: 4px; scrollbar-gutter: stable; scrollbar-width: thin; }
+  .dark  .results { scrollbar-color: rgba(255,255,255,0.22) transparent; }
+  .light .results { scrollbar-color: rgba(31,34,38,0.28) transparent; }
+  .row { display: flex; align-items: center; gap: 10px; min-height: 34px; flex: 0 0 auto; border-bottom: 1px solid; }
+  .dark  .row { border-color: rgba(255,255,255,0.06); }
+  .light .row { border-color: rgba(31,34,38,0.08); }
+  .rownum { flex: 0 0 auto; width: 18px; text-align: right; font-size: 10.5px; }
+  .dark  .rownum { color: #8a9199; }
+  .light .rownum { color: #6a7078; }
+  .pw { flex: 1; min-width: 0; letter-spacing: 0.6px; line-height: 1.5; word-break: break-all; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; }
+  .dark  .pw { color: #f2f3f5; }
+  .light .pw { color: #1f2226; }
+  .copybtn { height: 24px; padding: 0 8px; flex: 0 0 auto; border-radius: 4px; display: grid; place-items: center;
+    font-size: 10px; font-weight: 600; letter-spacing: 1.2px; cursor: pointer; user-select: none; }
+  .dark  .copybtn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); color: #e8ebee; }
+  .dark  .copybtn:hover { background: rgba(255,255,255,0.18); }
+  .light .copybtn { background: rgba(255,255,255,0.50); border: 1px solid rgba(31,34,38,0.22); color: #2b2f34; }
+  .light .copybtn:hover { background: rgba(255,255,255,0.85); }
+
+  .toast { font-size: 10.5px; letter-spacing: 1px; }
+  .dark  .toast { color: oklch(0.78 0.13 75); }
+  .light .toast { color: oklch(0.55 0.13 75); }
+
+  /* info pane */
+  .info { position: absolute; left: calc(100% + 14px); top: 0; width: 320px; z-index: 10; border-radius: 12px;
+    padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 10px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.45); backdrop-filter: blur(18px) saturate(1.25); -webkit-backdrop-filter: blur(18px) saturate(1.25); }
+  .dark  .info { background: linear-gradient(180deg, rgba(40,45,52,0.55), rgba(17,20,24,0.65)); border: 1px solid rgba(255,255,255,0.16); }
+  .light .info { background: linear-gradient(180deg, rgba(255,255,255,0.48), rgba(236,240,244,0.58)); border: 1px solid rgba(255,255,255,0.65); box-shadow: 0 16px 40px rgba(20,25,35,0.35); }
+  .info-hd { display: flex; align-items: center; height: 20px; }
+  .info-title { flex: 1; font-size: 10px; font-weight: 600; letter-spacing: 1.6px; }
+  .dark .info-title { color: #b2b8be; } .light .info-title { color: #4f565e; }
+  .info-body { font-size: 11.5px; line-height: 1.55; }
+  .dark .info-body { color: #e8ebee; } .light .info-body { color: #24262a; }
+  .info-list { display: flex; flex-direction: column; gap: 6px; font-size: 11px; line-height: 1.5; }
+  .dark .info-list { color: #b2b8be; } .light .info-list { color: #4f565e; }
+  .info-list b { font-weight: 600; }
+  .dark .info-list b { color: #f2f3f5; } .light .info-list b { color: #1f2226; }
+  .clip { display: flex; align-items: center; gap: 8px; }
+  .clip-val { width: 38px; text-align: center; font-size: 12px; }
+  .dark .clip-val { color: #f2f3f5; } .light .clip-val { color: #1f2226; }
+  .stepbtn { width: 22px; height: 22px; border-radius: 4px; display: grid; place-items: center; font-size: 13px; cursor: pointer; user-select: none; }
+  .dark  .stepbtn { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18); color: #e8ebee; }
+  .dark  .stepbtn:hover { background: rgba(255,255,255,0.14); }
+  .light .stepbtn { background: rgba(255,255,255,0.55); border: 1px solid rgba(31,34,38,0.25); color: #2b2f34; }
+  .light .stepbtn:hover { background: rgba(255,255,255,0.85); }
+
+  /* rolled-up bar */
+  .rolled { width: 356px; border-radius: 12px; padding: 8px 16px; display: flex; align-items: center; gap: 12px;
+    cursor: pointer; opacity: 0.45; user-select: none; transition: opacity .12s; }
+  .rolled:hover { opacity: 1; }
+  .dark  .rolled { background: linear-gradient(180deg, rgba(40,45,52,0.72), rgba(17,20,24,0.84)); border: 1px solid rgba(255,255,255,0.14); }
+  .light .rolled { background: linear-gradient(180deg, rgba(255,255,255,0.68), rgba(236,240,244,0.78)); border: 1px solid rgba(255,255,255,0.80); }
+  .rolled .brand { flex: 1; }
+  .dark  .rolled .brand { color: #f2f3f5; } .light .rolled .brand { color: #24262a; }
+  .rolled-hint { font-size: 10px; letter-spacing: 1.2px; font-weight: 600; }
+  .dark  .rolled-hint { color: #b2b8be; } .light .rolled-hint { color: #4f565e; }
+
+  .caption { font-size: 10px; letter-spacing: 1.4px; font-weight: 600; text-transform: uppercase; color: rgba(255,255,255,0.5); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="bg-layer">
+    <div class="bg-glow"></div>
+    <div class="bg-streak-1"></div>
+    <div class="bg-streak-2"></div>
+  </div>
+
+  <div id="app"></div>
+
+  <div class="caption">Interactive mock · generate · copy · theme · roll up</div>
+
+<script>
+// ============================================================================
+// LocalPass — standalone vanilla-JS reference implementation.
+// This is a faithful reimplementation of the design component so a developer
+// can read the behavior straight through without a template runtime.
+// All security-relevant logic (CSPRNG, guaranteed-class inclusion, shuffle,
+// clipboard auto-clear) matches the source. See README.md for the full spec.
+// ============================================================================
+
+// --- configurable defaults (were data-props on the design component) ---
+const CONFIG = {
+  startTheme: 'dark',        // 'dark' | 'light'
+  clipboardSeconds: 30,      // 5..60, step 5 — auto-clear countdown
+  maskPasswords: false       // start with results masked
+};
+
+const CHARSETS = {
+  lower: 'abcdefghijklmnopqrstuvwxyz',
+  upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  digits: '0123456789',
+  symbols: '!@#$%^&*+-=?'
+};
+const LOOKALIKES = 'Il1O0o5S8B';
+
+const state = {
+  theme: CONFIG.startTheme,
+  collapsed: false,
+  pinned: true,
+  masked: CONFIG.maskPasswords,
+  length: 20,
+  count: 3,
+  lower: true, upper: true, digits: true, symbols: true, nolook: true,
+  passwords: [],
+  revealed: {},
+  copiedIndex: null,
+  copiedSecs: 0,
+  infoOpen: false,
+  clipSecs: CONFIG.clipboardSeconds
+};
+
+let timer = null;
+function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
+
+// cryptographically-secure random index in [0, n)
+function rnd(n) { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; }
+
+function activeSets() {
+  let cs = [];
+  if (state.lower)   cs.push(CHARSETS.lower);
+  if (state.upper)   cs.push(CHARSETS.upper);
+  if (state.digits)  cs.push(CHARSETS.digits);
+  if (state.symbols) cs.push(CHARSETS.symbols);
+  if (state.nolook)  cs = cs.map(set => set.split('').filter(c => LOOKALIKES.indexOf(c) < 0).join(''));
+  return cs.filter(x => x.length > 0);
+}
+
+function genOne(sets, len) {
+  const all = sets.join('');
+  const chars = [];
+  sets.forEach(set => chars.push(set[rnd(set.length)]));   // guarantee ≥1 of each selected class
+  while (chars.length < len) chars.push(all[rnd(all.length)]);
+  for (let i = chars.length - 1; i > 0; i--) {             // Fisher–Yates shuffle
+    const j = rnd(i + 1); const t = chars[i]; chars[i] = chars[j]; chars[j] = t;
+  }
+  return chars.slice(0, len).join('');
+}
+
+function generate() {
+  const sets = activeSets();
+  if (!sets.length) return;                                // no character classes → no-op
+  const out = [];
+  for (let i = 0; i < state.count; i++) out.push(genOne(sets, state.length));
+  stopTimer();
+  Object.assign(state, { passwords: out, revealed: {}, copiedIndex: null, copiedSecs: 0 });
+  render();
+}
+
+function clear() {
+  if (!state.passwords.length) return;
+  stopTimer();
+  Object.assign(state, { passwords: [], revealed: {}, copiedIndex: null, copiedSecs: 0 });
+  render();
+}
+
+function copy(i) {
+  try { navigator.clipboard.writeText(state.passwords[i]); } catch (e) {}
+  stopTimer();
+  state.copiedIndex = i;
+  state.copiedSecs = state.clipSecs;
+  render();
+  timer = setInterval(() => {
+    state.copiedSecs -= 1;
+    if (state.copiedSecs <= 0) {
+      stopTimer();
+      try { navigator.clipboard.writeText(' '); } catch (e) {}  // scrub clipboard
+      state.copiedIndex = null; state.copiedSecs = 0;
+    }
+    render();
+  }, 1000);
+}
+
+// -------- helpers for controlled numeric inputs --------
+function clampLength(n) { return Math.max(4, Math.min(64, n)); }
+function clampCount(n)  { return Math.max(1, Math.min(99, n)); }
+
+function el(tag, cls, props) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (props) Object.assign(n, props);
+  return n;
+}
+
+const SEG_DEFS = [
+  { key: 'lower',   label: 'a\u2013z',  flex: 1 },
+  { key: 'upper',   label: 'A\u2013Z',  flex: 1 },
+  { key: 'digits',  label: '0\u20139',  flex: 1 },
+  { key: 'symbols', label: '!@#',       flex: 1 },
+  { key: 'nolook',  label: 'NO 0O1l',   flex: 1.3, tip: 'Exclude look-alike characters (0 O 1 l I \u2026)' }
+];
+
+function iconBtn(glyph, title, color, onClick, fontSize) {
+  const b = el('div', 'iconbtn', { title, onclick: onClick });
+  b.textContent = glyph;
+  b.style.color = color;
+  if (fontSize) b.style.fontSize = fontSize;
+  return b;
+}
+
+function render() {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  const dark = state.theme === 'dark';
+  const themeClass = dark ? 'dark' : 'light';
+
+  // ---- rolled-up bar ----
+  if (state.collapsed) {
+    const bar = el('div', 'rolled ' + themeClass, { onclick: () => { state.collapsed = false; render(); } });
+    const brand = el('div', 'brand'); brand.textContent = 'LOCALPASS';
+    const hint = el('div', 'rolled-hint'); hint.textContent = 'CLICK TO EXPAND';
+    bar.append(brand, hint);
+    app.appendChild(bar);
+    return;
+  }
+
+  const card = el('div', 'card ' + themeClass);
+
+  // ---- title bar ----
+  const tb = el('div', 'titlebar');
+  const brand = el('div', 'brand'); brand.textContent = 'LOCALPASS';
+  const muted = dark ? '#6a7078' : '#9aa0a6';
+  const active = dark ? '#f2f3f5' : '#24262a';
+  const idleIcon = dark ? '#b2b8be' : '#4f565e';
+  tb.appendChild(brand);
+  tb.appendChild(iconBtn('?', 'About LocalPass', state.infoOpen ? active : muted,
+    () => { state.infoOpen = !state.infoOpen; render(); }));
+  tb.appendChild(iconBtn('\u2731', state.masked ? 'Masking on \u2014 click a password to reveal' : 'Mask passwords',
+    state.masked ? active : muted, () => { state.masked = !state.masked; state.revealed = {}; render(); }));
+  tb.appendChild(iconBtn('\u25C9', 'Pin on top', state.pinned ? active : muted,
+    () => { state.pinned = !state.pinned; render(); }));
+  tb.appendChild(iconBtn(dark ? '\u25D0' : '\u25D1', 'Switch theme', idleIcon,
+    () => { state.theme = dark ? 'light' : 'dark'; render(); }, '12px'));
+  tb.appendChild(iconBtn('\u2715', 'Roll up', idleIcon,
+    () => { state.collapsed = true; render(); }));
+  card.appendChild(tb);
+  card.appendChild(el('div', 'divider'));
+
+  // ---- length / slider / count ----
+  const ctl = el('div', 'ctlrow');
+  const lenLbl = el('span', 'label'); lenLbl.textContent = 'LENGTH';
+  const lenIn = el('input', 'numinput mono', { value: String(state.length) });
+  lenIn.oninput = () => { const n = parseInt(lenIn.value, 10); if (!isNaN(n) && n >= 4 && n <= 64) { state.length = n; syncSlider(); } };
+  lenIn.onblur  = () => { const n = parseInt(lenIn.value, 10); state.length = isNaN(n) ? state.length : clampLength(n); render(); };
+  lenIn.onkeydown = e => { if (e.key === 'Enter') lenIn.blur(); };
+
+  const slider = el('div', 'slider');
+  const track = el('div', 'track');
+  const fill = el('div', 'fill');
+  const knob = el('div', 'knob');
+  slider.append(track, fill, knob);
+  function syncSlider() {
+    const pct = ((state.length - 4) / 60) * 100;
+    fill.style.width = pct + '%';
+    knob.style.left = 'calc(' + pct + '% - 5px)';
+  }
+  syncSlider();
+  slider.onpointerdown = e => {
+    e.preventDefault();
+    const rect = slider.getBoundingClientRect();
+    const upd = x => {
+      let p = Math.max(0, Math.min(1, (x - rect.left) / rect.width));
+      state.length = Math.round(4 + p * 60);
+      lenIn.value = String(state.length);
+      syncSlider();
+    };
+    upd(e.clientX);
+    const move = ev => upd(ev.clientX);
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  const cntLbl = el('span', 'label'); cntLbl.textContent = 'COUNT';
+  const cntIn = el('input', 'numinput mono', { value: String(state.count) });
+  cntIn.oninput = () => { const n = parseInt(cntIn.value, 10); if (!isNaN(n) && n >= 1 && n <= 99) state.count = n; };
+  cntIn.onblur  = () => { const n = parseInt(cntIn.value, 10); state.count = isNaN(n) ? state.count : clampCount(n); render(); };
+  cntIn.onkeydown = e => { if (e.key === 'Enter') cntIn.blur(); };
+
+  ctl.append(lenLbl, lenIn, slider, cntLbl, cntIn);
+  card.appendChild(ctl);
+
+  // ---- character-class segments ----
+  const segbar = el('div', 'segbar');
+  SEG_DEFS.forEach((d, i) => {
+    const on = state[d.key];
+    const seg = el('div', 'seg mono', { title: d.tip || '' });
+    seg.textContent = d.label;
+    seg.style.flex = d.flex;
+    if (dark) {
+      seg.style.background = on ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.03)';
+      seg.style.color = on ? '#f2f3f5' : '#79818a';
+      if (i < SEG_DEFS.length - 1) seg.style.borderRight = '1px solid rgba(255,255,255,0.12)';
+    } else {
+      seg.style.background = on ? 'rgba(31,34,38,0.12)' : 'rgba(255,255,255,0.40)';
+      seg.style.color = on ? '#1f2226' : '#8a9098';
+      if (i < SEG_DEFS.length - 1) seg.style.borderRight = '1px solid rgba(31,34,38,0.15)';
+    }
+    seg.onclick = () => { state[d.key] = !state[d.key]; render(); };
+    segbar.appendChild(seg);
+  });
+  card.appendChild(segbar);
+
+  // ---- actions ----
+  const actions = el('div', 'actions');
+  const gen = el('div', 'generate'); gen.textContent = 'GENERATE'; gen.onclick = generate;
+  const clr = el('div', 'clearbtn'); clr.textContent = 'CLEAR';
+  const has = state.passwords.length > 0;
+  clr.style.opacity = has ? 1 : 0.38;
+  clr.style.cursor = has ? 'pointer' : 'default';
+  clr.onclick = clear;
+  actions.append(gen, clr);
+  card.appendChild(actions);
+
+  // ---- results ----
+  if (has) {
+    card.appendChild(el('div', 'divider'));
+    const list = el('div', 'results');
+    state.passwords.forEach((p, i) => {
+      // Fit-to-width: track ~224px; Cascadia Mono advance ~0.62em + 0.6px letter-spacing.
+      // Below a 9px floor it stops shrinking and wraps instead.
+      const fit = (224 / Math.max(p.length, 1) - 0.6) / 0.62;
+      const wrap = fit < 9;
+      const fontSize = wrap ? 11 : Math.round(Math.min(12, fit) * 10) / 10;
+
+      const row = el('div', 'row');
+      const num = el('span', 'rownum mono'); num.textContent = String(i + 1).padStart(2, '0');
+      const pw = el('span', 'pw mono');
+      pw.textContent = (state.masked && !state.revealed[i]) ? '\u2022'.repeat(p.length) : p;
+      pw.style.fontSize = fontSize + 'px';
+      pw.style.whiteSpace = wrap ? 'normal' : 'nowrap';
+      pw.style.padding = (wrap ? '6px' : '0px') + ' 0';
+      pw.onclick = () => { state.revealed[i] = !state.revealed[i]; render(); };
+      const cp = el('div', 'copybtn'); cp.textContent = state.copiedIndex === i ? 'COPIED' : 'COPY';
+      cp.onclick = () => copy(i);
+      row.append(num, pw, cp);
+      list.appendChild(row);
+    });
+    card.appendChild(list);
+
+    if (state.copiedIndex !== null) {
+      const toast = el('div', 'toast mono');
+      toast.textContent = '\u25AE COPIED ' + String(state.copiedIndex + 1).padStart(2, '0')
+        + ' \u00B7 CLIPBOARD RELEASES IN ' + state.copiedSecs + ' S';
+      card.appendChild(toast);
+    }
+  }
+
+  // ---- info pane ----
+  if (state.infoOpen) card.appendChild(buildInfo(dark));
+
+  app.appendChild(card);
+}
+
+function buildInfo(dark) {
+  const active = dark ? '#f2f3f5' : '#24262a';
+  const idle = dark ? '#b2b8be' : '#4f565e';
+  const info = el('div', 'info');
+
+  const hd = el('div', 'info-hd');
+  const t = el('div', 'info-title'); t.textContent = 'ABOUT LOCALPASS';
+  hd.appendChild(t);
+  hd.appendChild(iconBtn('\u2715', 'Close', idle, () => { state.infoOpen = false; render(); }));
+  info.appendChild(hd);
+  info.appendChild(el('div', 'divider'));
+
+  const body = el('div', 'info-body');
+  body.textContent = 'Passwords are generated entirely on this machine. Nothing is stored, logged, or sent anywhere.';
+  info.appendChild(body);
+
+  const list = el('div', 'info-list');
+  [
+    ['LENGTH \u00B7 COUNT', ' \u2014 size and number of results.'],
+    ['a\u2013z \u2026 !@#', ' \u2014 toggle character sets.'],
+    ['NO 0O1l', ' \u2014 drop look-alike characters.'],
+    ['\u2731', ' \u2014 mask results; click one to reveal.'],
+    ['\u25C9', ' \u2014 keep the window on top.']
+  ].forEach(([b, rest]) => {
+    const row = el('div');
+    const strong = el('b'); strong.textContent = b;
+    row.appendChild(strong);
+    row.appendChild(document.createTextNode(rest));
+    list.appendChild(row);
+  });
+  info.appendChild(list);
+  info.appendChild(el('div', 'divider'));
+
+  const clip = el('div', 'clip');
+  const lbl = el('div', 'label'); lbl.style.flex = '1'; lbl.textContent = 'CLIPBOARD CLEAR TIMER';
+  const val = el('div', 'clip-val mono'); val.textContent = state.clipSecs + ' S';
+  const minus = el('div', 'stepbtn'); minus.textContent = '\u2212';
+  minus.style.opacity = state.clipSecs <= 5 ? 0.35 : 1;
+  minus.onclick = () => { state.clipSecs = Math.max(5, state.clipSecs - 5); render(); };
+  const plus = el('div', 'stepbtn'); plus.textContent = '+';
+  plus.style.opacity = state.clipSecs >= 60 ? 0.35 : 1;
+  plus.onclick = () => { state.clipSecs = Math.min(60, state.clipSecs + 5); render(); };
+  clip.append(lbl, val, minus, plus);   // value on the left, − and + grouped on the right
+  info.appendChild(clip);
+
+  return info;
+}
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <style>
+    body { margin: 0; background: #e9e8e5; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #3a4656; text-decoration: none; }
+    a:hover { color: #171c24; text-decoration: underline; }
+  </style>
+</helmet>
+
+<section style="display: flex; flex-direction: column; gap: 20px; padding: 40px; min-width: 560px;">
+
+  <div style="display: flex; flex-direction: column; gap: 6px; max-width: 900px;">
+    <div style="font-size: 12px; letter-spacing: 1.6px; text-transform: uppercase; color: #8a8880; font-weight: 600;">Turn 2 · Synthesis</div>
+    <div style="font-size: 26px; font-weight: 650; color: #1d1f23;">Frosted instrument — 1c structure, 1a material</div>
+    <div style="font-size: 13.5px; color: #5d5f63; line-height: 1.5;">Instrument density and micro-labels on true acrylic, consistent across both themes. Clear is always present (disabled until results exist), Length is directly editable, and the character groups are a segmented bar restyled in frost.</div>
+  </div>
+
+  <div style="display: flex; gap: 28px; align-items: flex-start;">
+
+    <!-- ============ OPTION 2A — FROSTED INSTRUMENT ============ -->
+    <div id="2a" style="width: 424px; background: #ffffff; border: 1px solid #dddbd5; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; align-items: baseline; gap: 10px;">
+        <a href="#2a" style="font-family: Consolas, monospace; font-size: 12px; font-weight: 700; background: #1d1f23; color: #ffffff; border-radius: 6px; padding: 3px 8px;">2a</a>
+        <div style="font-size: 16px; font-weight: 650; color: #1d1f23;">Frosted instrument</div>
+      </div>
+
+      <div style="font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: #98968e; font-weight: 600;">Dark · results — Clear enabled</div>
+      <div style="border-radius: 12px; padding: 24px; display: flex; justify-content: center; background: linear-gradient(140deg, #46536b 0%, #6d6a75 45%, #9b8677 100%);">
+        <div style="width: 356px; border-radius: 12px; padding: 12px 16px 14px 16px; background: linear-gradient(180deg, rgba(40,45,52,0.72), rgba(17,20,24,0.84)); border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 16px 40px rgba(0,0,0,0.45); display: flex; flex-direction: column; gap: 11px;">
+          <div style="display: flex; align-items: center; gap: 12px; height: 24px;">
+            <div style="flex: 1; font-size: 12px; font-weight: 600; letter-spacing: 2px; color: #f2f3f5;">LOCALPASS</div>
+            <div style="color: #b2b8be; font-size: 12px;">◐</div>
+            <div style="color: #f2f3f5; font-size: 11px;">◉</div>
+            <div style="color: #b2b8be; font-size: 11px;">✕</div>
+          </div>
+          <div style="border-top: 1px solid rgba(255,255,255,0.09);"></div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 10px; letter-spacing: 1.2px; font-weight: 600; color: #b2b8be;">LENGTH</span>
+            <div style="width: 34px; height: 26px; border-radius: 4px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18); display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12px; color: #f2f3f5;">20</div>
+            <div style="position: relative; flex: 1; height: 12px; display: flex; align-items: center;">
+              <div style="position: absolute; left: 0; right: 0; height: 2px; background: rgba(255,255,255,0.18);"></div>
+              <div style="position: absolute; left: 0; width: 21%; height: 2px; background: #eef1f4;"></div>
+              <div style="position: absolute; left: calc(21% - 5px); width: 10px; height: 10px; border-radius: 2px; background: #eef1f4; box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>
+            </div>
+            <span style="font-size: 10px; letter-spacing: 1.2px; font-weight: 600; color: #b2b8be;">COUNT</span>
+            <div style="width: 34px; height: 26px; border-radius: 4px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18); display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12px; color: #f2f3f5;">3</div>
+          </div>
+          <div style="display: flex; border: 1px solid rgba(255,255,255,0.16); border-radius: 6px; overflow: hidden;">
+            <div style="flex: 1; height: 30px; display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; background: rgba(255,255,255,0.16); color: #f2f3f5; border-right: 1px solid rgba(255,255,255,0.12);">a–z</div>
+            <div style="flex: 1; height: 30px; display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; background: rgba(255,255,255,0.16); color: #f2f3f5; border-right: 1px solid rgba(255,255,255,0.12);">A–Z</div>
+            <div style="flex: 1; height: 30px; display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; background: rgba(255,255,255,0.16); color: #f2f3f5; border-right: 1px solid rgba(255,255,255,0.12);">0–9</div>
+            <div style="flex: 1; height: 30px; display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; background: rgba(255,255,255,0.16); color: #f2f3f5; border-right: 1px solid rgba(255,255,255,0.12);">!@#</div>
+            <div style="flex: 1.6; height: 30px; display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; background: rgba(255,255,255,0.16); color: #f2f3f5;">no look-alikes</div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <div style="flex: 1; height: 30px; border-radius: 4px; background: #eef1f4; color: #16181c; display: grid; place-items: center; font-size: 11px; font-weight: 700; letter-spacing: 1.4px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">GENERATE</div>
+            <div style="width: 76px; height: 30px; border-radius: 4px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18); color: #d7dbdf; display: grid; place-items: center; font-size: 11px; font-weight: 600; letter-spacing: 1.4px;">CLEAR</div>
+          </div>
+          <div style="border-top: 1px solid rgba(255,255,255,0.09);"></div>
+          <div style="display: flex; flex-direction: column;">
+            <div style="display: flex; align-items: center; gap: 10px; height: 34px;">
+              <span style="font-family: 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8a9199;">01</span>
+              <span style="flex: 1; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12.5px; color: #f2f3f5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">mK4#rW9@qTe7&amp;FvP2^sX</span>
+              <div style="height: 24px; padding: 0 10px; border-radius: 4px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); color: #e8ebee; display: grid; place-items: center; font-size: 10px; font-weight: 600; letter-spacing: 1.2px;">COPY</div>
+            </div>
+            <div style="border-top: 1px solid rgba(255,255,255,0.06);"></div>
+            <div style="display: flex; align-items: center; gap: 10px; height: 34px;">
+              <span style="font-family: 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8a9199;">02</span>
+              <span style="flex: 1; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12.5px; color: #f2f3f5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Xw6$nH3!cZr8*BqD5@jM</span>
+              <div style="height: 24px; padding: 0 10px; border-radius: 4px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); color: #e8ebee; display: grid; place-items: center; font-size: 10px; font-weight: 600; letter-spacing: 1.2px;">COPY</div>
+            </div>
+            <div style="border-top: 1px solid rgba(255,255,255,0.06);"></div>
+            <div style="display: flex; align-items: center; gap: 10px; height: 34px;">
+              <span style="font-family: 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8a9199;">03</span>
+              <span style="flex: 1; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12.5px; color: #f2f3f5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">t7&amp;PfR2#kV9$mYw4!GcN</span>
+              <div style="height: 24px; padding: 0 10px; border-radius: 4px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); color: #e8ebee; display: grid; place-items: center; font-size: 10px; font-weight: 600; letter-spacing: 1.2px;">COPY</div>
+            </div>
+          </div>
+          <div style="font-family: 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; letter-spacing: 1px; color: oklch(0.78 0.13 75);">▮ COPIED 01 · CLIPBOARD RELEASES IN 27 S</div>
+        </div>
+      </div>
+
+      <div style="font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: #98968e; font-weight: 600;">Light · idle — Clear visible, disabled</div>
+      <div style="border-radius: 12px; padding: 24px; display: flex; justify-content: center; background: linear-gradient(140deg, #46536b 0%, #6d6a75 45%, #9b8677 100%);">
+        <div style="width: 356px; border-radius: 12px; padding: 12px 16px 14px 16px; background: linear-gradient(180deg, rgba(255,255,255,0.68), rgba(236,240,244,0.78)); border: 1px solid rgba(255,255,255,0.80); box-shadow: 0 16px 40px rgba(20,25,35,0.35); display: flex; flex-direction: column; gap: 11px;">
+          <div style="display: flex; align-items: center; gap: 12px; height: 24px;">
+            <div style="flex: 1; font-size: 12px; font-weight: 600; letter-spacing: 2px; color: #24262a;">LOCALPASS</div>
+            <div style="color: #4f565e; font-size: 12px;">◑</div>
+            <div style="color: #24262a; font-size: 11px;">◉</div>
+            <div style="color: #4f565e; font-size: 11px;">✕</div>
+          </div>
+          <div style="border-top: 1px solid rgba(31,34,38,0.12);"></div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 10px; letter-spacing: 1.2px; font-weight: 600; color: #4f565e;">LENGTH</span>
+            <div style="width: 34px; height: 26px; border-radius: 4px; background: rgba(255,255,255,0.55); border: 1px solid rgba(31,34,38,0.25); display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12px; color: #24262a;">20</div>
+            <div style="position: relative; flex: 1; height: 12px; display: flex; align-items: center;">
+              <div style="position: absolute; left: 0; right: 0; height: 2px; background: rgba(31,34,38,0.22);"></div>
+              <div style="position: absolute; left: 0; width: 21%; height: 2px; background: #23262b;"></div>
+              <div style="position: absolute; left: calc(21% - 5px); width: 10px; height: 10px; border-radius: 2px; background: #23262b; box-shadow: 0 1px 3px rgba(0,0,0,0.25);"></div>
+            </div>
+            <span style="font-size: 10px; letter-spacing: 1.2px; font-weight: 600; color: #4f565e;">COUNT</span>
+            <div style="width: 34px; height: 26px; border-radius: 4px; background: rgba(255,255,255,0.55); border: 1px solid rgba(31,34,38,0.25); display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12px; color: #24262a;">1</div>
+          </div>
+          <div style="display: flex; border: 1px solid rgba(31,34,38,0.25); border-radius: 6px; overflow: hidden;">
+            <div style="flex: 1; height: 30px; display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; background: rgba(31,34,38,0.12); color: #1f2226; border-right: 1px solid rgba(31,34,38,0.15);">a–z</div>
+            <div style="flex: 1; height: 30px; display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; background: rgba(31,34,38,0.12); color: #1f2226; border-right: 1px solid rgba(31,34,38,0.15);">A–Z</div>
+            <div style="flex: 1; height: 30px; display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; background: rgba(31,34,38,0.12); color: #1f2226; border-right: 1px solid rgba(31,34,38,0.15);">0–9</div>
+            <div style="flex: 1; height: 30px; display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; background: rgba(255,255,255,0.40); color: #6a7078; border-right: 1px solid rgba(31,34,38,0.15);">!@#</div>
+            <div style="flex: 1.6; height: 30px; display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; background: rgba(31,34,38,0.12); color: #1f2226;">no look-alikes</div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <div style="flex: 1; height: 30px; border-radius: 4px; background: #23262b; color: #f7f8f9; display: grid; place-items: center; font-size: 11px; font-weight: 700; letter-spacing: 1.4px; box-shadow: 0 2px 6px rgba(20,25,35,0.3);">GENERATE</div>
+            <div style="width: 76px; height: 30px; border-radius: 4px; background: rgba(255,255,255,0.40); border: 1px solid rgba(31,34,38,0.20); color: #4f565e; display: grid; place-items: center; font-size: 11px; font-weight: 600; letter-spacing: 1.4px; opacity: 0.38;">CLEAR</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: #98968e; font-weight: 600;">Inactive · rolled up (22% opacity)</div>
+      <div style="border-radius: 12px; padding: 20px 24px; display: flex; justify-content: center; background: linear-gradient(140deg, #46536b 0%, #6d6a75 45%, #9b8677 100%);">
+        <div style="width: 356px; border-radius: 12px; padding: 8px 16px; opacity: 0.38; background: linear-gradient(180deg, rgba(40,45,52,0.72), rgba(17,20,24,0.84)); border: 1px solid rgba(255,255,255,0.14); display: flex; align-items: center; gap: 12px;">
+          <div style="flex: 1; font-size: 12px; font-weight: 600; letter-spacing: 2px; color: #f2f3f5;">LOCALPASS</div>
+          <div style="color: #b2b8be; font-size: 12px;">◐</div>
+          <div style="color: #b2b8be; font-size: 11px;">◉</div>
+          <div style="color: #b2b8de; font-size: 11px;">✕</div>
+        </div>
+      </div>
+
+      <ul style="margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: #5d5f63; line-height: 1.45;">
+        <li>1c structure on 1a acrylic — both themes true frost; active window keeps 90% opacity</li>
+        <li>Clear always present: ghost when results exist, 38% opacity + unfocusable when empty</li>
+        <li>Length value is an editable input (same box as Count); slider stays for coarse drags</li>
+        <li>Character groups + no look-alikes as one frosted segmented bar — 1b's control, 1c's row; checked = brighter fill, unchecked = quiet (see !@# in light idle)</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+</x-dc>
+</body>
+</html>

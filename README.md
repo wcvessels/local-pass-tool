@@ -5,38 +5,36 @@ Compact, local-only Windows password generator. Double-click
 
 ## Use
 
-- Choose a length from 8 to 64.
-- Enter a count from 1 to 50. Up and Down adjust the count.
-- Toggle lowercase, uppercase, numbers, symbols, and **No look-alikes**.
-- Press **Generate**, then use the **Copy** button beside the password you need.
-- Press **Clear** to remove generated values and release clipboard content owned by LocalPass.
+- Choose a length from 4 to 64 and a count from 1 to 99.
+- Toggle lowercase, uppercase, numbers, symbols, and **NO 0O1l**.
+- Press **GENERATE**, then **COPY** beside the password you need.
+- Use **✱** to mask all results; click a masked result to reveal that row.
+- Use **?** to change the clipboard release timer from 5 to 60 seconds.
+- Press **CLEAR** to remove generated values and release clipboard content owned by LocalPass.
+- **✕** closes LocalPass and releases clipboard content it still owns.
+- When inactive and not hovered, widget rolls up automatically; hover or focus expands it.
+- Additional launches exit while one LocalPass instance is already running.
 
-Shortcuts: `Ctrl+G` generates; `Ctrl+L` clears.
+Shortcuts: `Ctrl+G` generates; `Ctrl+L` clears. Close the app with `Alt+F4`
+or its taskbar command.
 
 ## Appearance
 
-- Gunmetal dark frost and white-grey light frost; the theme button switches them.
-- Active window: 90% opacity.
-- Inactive hover: 72% opacity with passwords masked.
-- Inactive pointer-out: 22% opacity, then settings/results roll into the header.
-- Hovering or activating the header unrolls the utility.
+- Compact 400px frosted-glass widget with dark and light themes.
+- Results fit long passwords to the available row width, then wrap when needed.
+- The About pane opens to the right with control help and clipboard timing.
 - Windows High Contrast disables transparency.
 
 Theme and window choices are session-only. Nothing is saved.
 
-On Windows 10, LocalPass uses a supported translucent frosted-tint fallback.
-Supported system backdrop acrylic requires newer Windows 11; LocalPass avoids
-undocumented composition hooks.
-
 ## Security boundary
 
-- Windows cryptographic randomness with unbiased selection.
+- Windows cryptographic randomness with unbiased selection and Fisher–Yates shuffle.
 - Every generated password contains at least one character from each enabled group.
-- Batch values are unique.
 - Memory only: no files, settings, logs, analytics, telemetry, server, or network calls.
-- Clipboard changes happen only after an explicit per-row **Copy**.
+- Clipboard changes happen only after an explicit per-row **COPY**.
 - Copied text is marked for exclusion from Windows Clipboard History and cloud clipboard sync.
-- Owned clipboard content is released after 30 seconds, on **Clear**, regeneration, or normal close.
+- Owned clipboard content is released after the selected timeout, on **CLEAR**, regeneration, or normal close.
 - Clipboard cleanup never erases content another application placed there.
 - Generated text masks before the window loses focus.
 

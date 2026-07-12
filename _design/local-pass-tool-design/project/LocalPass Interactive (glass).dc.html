@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; background: #46536b; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #dfe3e8; text-decoration: none; }
+    a:hover { color: #ffffff; text-decoration: underline; }
+  </style>
+</helmet>
+
+<div style="position: relative; min-height: 100vh; box-sizing: border-box; background: linear-gradient(140deg, #46536b 0%, #6d6a75 45%, #9b8677 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 48px 24px;">
+
+  <!-- desktop detail behind the glass so translucency reads -->
+  <div style="position: absolute; inset: 0; overflow: hidden; pointer-events: none;">
+    <div style="position: absolute; inset: 0; background-image: radial-gradient(420px 300px at 34% 28%, rgba(255,236,200,0.55), rgba(255,236,200,0) 70%), radial-gradient(360px 360px at 68% 62%, rgba(120,180,235,0.45), rgba(120,180,235,0) 70%), radial-gradient(300px 220px at 52% 84%, rgba(90,60,110,0.5), rgba(90,60,110,0) 70%);"></div>
+    <div style="position: absolute; left: 38%; top: 12%; width: 200px; height: 460px; transform: rotate(24deg); background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.22) 50%, rgba(255,255,255,0) 100%);"></div>
+    <div style="position: absolute; left: 58%; top: -6%; width: 90px; height: 560px; transform: rotate(24deg); background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0) 100%);"></div>
+  </div>
+
+  <!-- ======== DARK WIDGET ======== -->
+  <sc-if value="{{ showDark }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="LocalPass dark" style="position: relative; width: 356px; box-sizing: border-box; border-radius: 12px; padding: 12px 16px 14px 16px; background: linear-gradient(180deg, rgba(40,45,52,0.52), rgba(17,20,24,0.62)); border: 1px solid rgba(255,255,255,0.16); box-shadow: 0 16px 40px rgba(0,0,0,0.45); backdrop-filter: blur(18px) saturate(1.25); -webkit-backdrop-filter: blur(18px) saturate(1.25); display: flex; flex-direction: column; gap: 11px;">
+
+      <div style="display: flex; align-items: center; gap: 2px; height: 24px;">
+        <div style="flex: 1; font-size: 12px; font-weight: 600; letter-spacing: 2px; color: #f2f3f5;">LOCALPASS</div>
+        <div onClick="{{ toggleInfo }}" title="About LocalPass" style="width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; user-select: none; color: {{ infoColorD }};" style-hover="background: rgba(255,255,255,0.10);">?</div>
+        <div onClick="{{ toggleMask }}" title="{{ maskTip }}" style="width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; font-size: 11px; cursor: pointer; user-select: none; color: {{ maskColorD }};" style-hover="background: rgba(255,255,255,0.10);">✱</div>
+        <div onClick="{{ togglePin }}" title="Pin on top" style="width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; font-size: 11px; cursor: pointer; user-select: none; color: {{ pinColorD }};" style-hover="background: rgba(255,255,255,0.10);">◉</div>
+        <div onClick="{{ toggleTheme }}" title="Switch theme" style="width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; color: #b2b8be; font-size: 12px; cursor: pointer; user-select: none;" style-hover="background: rgba(255,255,255,0.10); color: #f2f3f5;">{{ themeIcon }}</div>
+        <div onClick="{{ collapse }}" title="Roll up" style="width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; color: #b2b8be; font-size: 11px; cursor: pointer; user-select: none;" style-hover="background: rgba(255,255,255,0.10); color: #f2f3f5;">✕</div>
+      </div>
+      <div style="border-top: 1px solid rgba(255,255,255,0.09);"></div>
+
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 10px; letter-spacing: 1.2px; font-weight: 600; color: #b2b8be;">LENGTH</span>
+        <input value="{{ lengthText }}" onChange="{{ onLengthChange }}" onBlur="{{ onLengthBlur }}" onKeyDown="{{ onInputKey }}" style="width: 34px; height: 26px; box-sizing: border-box; border-radius: 4px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18); color: #f2f3f5; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12px; text-align: center; outline: none; padding: 0;" style-focus="border-color: rgba(255,255,255,0.5);">
+        <div onPointerDown="{{ onSliderDown }}" style="position: relative; flex: 1; height: 16px; display: flex; align-items: center; cursor: ew-resize; touch-action: none;">
+          <div style="position: absolute; left: 0; right: 0; height: 2px; background: rgba(255,255,255,0.18);"></div>
+          <div style="position: absolute; left: 0; width: {{ sliderPct }}%; height: 2px; background: #eef1f4;"></div>
+          <div style="position: absolute; left: calc({{ sliderPct }}% - 5px); width: 10px; height: 10px; border-radius: 2px; background: #eef1f4; box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>
+        </div>
+        <span style="font-size: 10px; letter-spacing: 1.2px; font-weight: 600; color: #b2b8be;">COUNT</span>
+        <input value="{{ countText }}" onChange="{{ onCountChange }}" onBlur="{{ onCountBlur }}" onKeyDown="{{ onInputKey }}" style="width: 34px; height: 26px; box-sizing: border-box; border-radius: 4px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18); color: #f2f3f5; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12px; text-align: center; outline: none; padding: 0;" style-focus="border-color: rgba(255,255,255,0.5);">
+      </div>
+
+      <div style="display: flex; border: 1px solid rgba(255,255,255,0.16); border-radius: 6px; overflow: hidden;">
+        <sc-for list="{{ segments }}" as="seg" hint-placeholder-count="5">
+          <div onClick="{{ seg.toggle }}" title="{{ seg.tip }}" style="flex: {{ seg.flex }}; height: 30px; padding: 0 6px; display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; cursor: pointer; user-select: none; text-decoration: {{ seg.deco }}; background: {{ seg.bgD }}; color: {{ seg.fgD }}; border-right: {{ seg.brD }};">{{ seg.label }}</div>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <div onClick="{{ generate }}" style="flex: 1; height: 30px; border-radius: 4px; background: #eef1f4; color: #16181c; display: grid; place-items: center; font-size: 11px; font-weight: 700; letter-spacing: 1.4px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; user-select: none;" style-hover="background: #ffffff;" style-active="transform: translateY(1px);">GENERATE</div>
+        <div onClick="{{ clear }}" style="width: 76px; height: 30px; border-radius: 4px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18); color: #d7dbdf; display: grid; place-items: center; font-size: 11px; font-weight: 600; letter-spacing: 1.4px; user-select: none; opacity: {{ clearOpacity }}; cursor: {{ clearCursor }};" style-hover="background: rgba(255,255,255,0.12);">CLEAR</div>
+      </div>
+
+      <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
+        <div style="border-top: 1px solid rgba(255,255,255,0.09);"></div>
+        <div style="display: flex; flex-direction: column; max-height: 350px; overflow-y: auto; overscroll-behavior: contain; margin-right: -14px; padding-right: 4px; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.22) transparent;">
+          <sc-for list="{{ rows }}" as="row" hint-placeholder-count="3">
+            <div style="display: flex; align-items: center; gap: 10px; min-height: 34px; flex: 0 0 auto; border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <span style="flex: 0 0 auto; width: 18px; text-align: right; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #8a9199;">{{ row.num }}</span>
+              <span onClick="{{ row.reveal }}" style="flex: 1; min-width: 0; font-family: 'Cascadia Mono', Consolas, monospace; font-size: {{ row.fontSize }}px; letter-spacing: 0.6px; line-height: 1.5; padding: {{ row.padV }} 0; word-break: break-all; color: #f2f3f5; overflow: hidden; text-overflow: ellipsis; white-space: {{ row.whiteSpace }};">{{ row.display }}</span>
+              <div onClick="{{ row.copy }}" style="height: 24px; padding: 0 8px; flex: 0 0 auto; border-radius: 4px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); color: #e8ebee; display: grid; place-items: center; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; cursor: pointer; user-select: none;" style-hover="background: rgba(255,255,255,0.18);">{{ row.copyLabel }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ copiedActive }}" hint-placeholder-val="{{ false }}">
+          <div style="font-family: 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; letter-spacing: 1px; color: oklch(0.78 0.13 75);">▮ COPIED {{ copiedNum }} · CLIPBOARD RELEASES IN {{ copiedSecs }} S</div>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ infoOpen }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="LocalPass info pane" style="position: absolute; left: calc(100% + 14px); top: 0; width: 320px; box-sizing: border-box; z-index: 10; border-radius: 12px; padding: 12px 16px 14px 16px; background: linear-gradient(180deg, rgba(40,45,52,0.55), rgba(17,20,24,0.65)); border: 1px solid rgba(255,255,255,0.16); box-shadow: 0 16px 40px rgba(0,0,0,0.45); backdrop-filter: blur(18px) saturate(1.25); -webkit-backdrop-filter: blur(18px) saturate(1.25); display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: center; height: 20px;">
+            <div style="flex: 1; font-size: 10px; font-weight: 600; letter-spacing: 1.6px; color: #b2b8be;">ABOUT LOCALPASS</div>
+            <div onClick="{{ closeInfo }}" style="width: 20px; height: 20px; display: grid; place-items: center; border-radius: 5px; color: #b2b8be; font-size: 10px; cursor: pointer; user-select: none;" style-hover="background: rgba(255,255,255,0.10); color: #f2f3f5;">✕</div>
+          </div>
+          <div style="border-top: 1px solid rgba(255,255,255,0.09);"></div>
+          <div style="font-size: 11.5px; line-height: 1.55; color: #e8ebee;">Passwords are generated entirely on this machine. Nothing is stored, logged, or sent anywhere.</div>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px; line-height: 1.5; color: #b2b8be;">
+            <div><span style="color: #f2f3f5; font-weight: 600;">LENGTH · COUNT</span> — size and number of results.</div>
+            <div><span style="color: #f2f3f5; font-weight: 600;">a–z … !@#</span> — toggle character sets.</div>
+            <div><span style="color: #f2f3f5; font-weight: 600;">NO 0O1l</span> — drop look-alike characters.</div>
+            <div><span style="color: #f2f3f5; font-weight: 600;">✱</span> — mask results; click one to reveal.</div>
+            <div><span style="color: #f2f3f5; font-weight: 600;">◉</span> — keep the window on top.</div>
+          </div>
+          <div style="border-top: 1px solid rgba(255,255,255,0.09);"></div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="flex: 1; font-size: 10px; letter-spacing: 1.2px; font-weight: 600; color: #b2b8be;">CLIPBOARD CLEAR TIMER</div>
+            <div style="width: 38px; text-align: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12px; color: #f2f3f5;">{{ clipSecs }} S</div>
+            <div onClick="{{ clipMinus }}" style="width: 22px; height: 22px; border-radius: 4px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18); color: #e8ebee; display: grid; place-items: center; font-size: 13px; cursor: pointer; user-select: none; opacity: {{ clipMinusOp }};" style-hover="background: rgba(255,255,255,0.14);">−</div>
+            <div onClick="{{ clipPlus }}" style="width: 22px; height: 22px; border-radius: 4px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18); color: #e8ebee; display: grid; place-items: center; font-size: 13px; cursor: pointer; user-select: none; opacity: {{ clipPlusOp }};" style-hover="background: rgba(255,255,255,0.14);">+</div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- ======== LIGHT WIDGET ======== -->
+  <sc-if value="{{ showLight }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="LocalPass light" style="position: relative; width: 356px; box-sizing: border-box; border-radius: 12px; padding: 12px 16px 14px 16px; background: linear-gradient(180deg, rgba(255,255,255,0.45), rgba(236,240,244,0.55)); border: 1px solid rgba(255,255,255,0.65); box-shadow: 0 16px 40px rgba(20,25,35,0.35); backdrop-filter: blur(18px) saturate(1.25); -webkit-backdrop-filter: blur(18px) saturate(1.25); display: flex; flex-direction: column; gap: 11px;">
+
+      <div style="display: flex; align-items: center; gap: 2px; height: 24px;">
+        <div style="flex: 1; font-size: 12px; font-weight: 600; letter-spacing: 2px; color: #24262a;">LOCALPASS</div>
+        <div onClick="{{ toggleInfo }}" title="About LocalPass" style="width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; user-select: none; color: {{ infoColorL }};" style-hover="background: rgba(31,34,38,0.10);">?</div>
+        <div onClick="{{ toggleMask }}" title="{{ maskTip }}" style="width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; font-size: 11px; cursor: pointer; user-select: none; color: {{ maskColorL }};" style-hover="background: rgba(31,34,38,0.10);">✱</div>
+        <div onClick="{{ togglePin }}" title="Pin on top" style="width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; font-size: 11px; cursor: pointer; user-select: none; color: {{ pinColorL }};" style-hover="background: rgba(31,34,38,0.10);">◉</div>
+        <div onClick="{{ toggleTheme }}" title="Switch theme" style="width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; color: #4f565e; font-size: 12px; cursor: pointer; user-select: none;" style-hover="background: rgba(31,34,38,0.10); color: #16181c;">{{ themeIcon }}</div>
+        <div onClick="{{ collapse }}" title="Roll up" style="width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; color: #4f565e; font-size: 11px; cursor: pointer; user-select: none;" style-hover="background: rgba(31,34,38,0.10); color: #16181c;">✕</div>
+      </div>
+      <div style="border-top: 1px solid rgba(31,34,38,0.12);"></div>
+
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 10px; letter-spacing: 1.2px; font-weight: 600; color: #4f565e;">LENGTH</span>
+        <input value="{{ lengthText }}" onChange="{{ onLengthChange }}" onBlur="{{ onLengthBlur }}" onKeyDown="{{ onInputKey }}" style="width: 34px; height: 26px; box-sizing: border-box; border-radius: 4px; background: rgba(255,255,255,0.55); border: 1px solid rgba(31,34,38,0.25); color: #24262a; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12px; text-align: center; outline: none; padding: 0;" style-focus="border-color: rgba(31,34,38,0.55);">
+        <div onPointerDown="{{ onSliderDown }}" style="position: relative; flex: 1; height: 16px; display: flex; align-items: center; cursor: ew-resize; touch-action: none;">
+          <div style="position: absolute; left: 0; right: 0; height: 2px; background: rgba(31,34,38,0.22);"></div>
+          <div style="position: absolute; left: 0; width: {{ sliderPct }}%; height: 2px; background: #23262b;"></div>
+          <div style="position: absolute; left: calc({{ sliderPct }}% - 5px); width: 10px; height: 10px; border-radius: 2px; background: #23262b; box-shadow: 0 1px 3px rgba(0,0,0,0.25);"></div>
+        </div>
+        <span style="font-size: 10px; letter-spacing: 1.2px; font-weight: 600; color: #4f565e;">COUNT</span>
+        <input value="{{ countText }}" onChange="{{ onCountChange }}" onBlur="{{ onCountBlur }}" onKeyDown="{{ onInputKey }}" style="width: 34px; height: 26px; box-sizing: border-box; border-radius: 4px; background: rgba(255,255,255,0.55); border: 1px solid rgba(31,34,38,0.25); color: #24262a; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12px; text-align: center; outline: none; padding: 0;" style-focus="border-color: rgba(31,34,38,0.55);">
+      </div>
+
+      <div style="display: flex; border: 1px solid rgba(31,34,38,0.25); border-radius: 6px; overflow: hidden;">
+        <sc-for list="{{ segments }}" as="seg" hint-placeholder-count="5">
+          <div onClick="{{ seg.toggle }}" title="{{ seg.tip }}" style="flex: {{ seg.flex }}; height: 30px; padding: 0 6px; display: grid; place-items: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; cursor: pointer; user-select: none; text-decoration: {{ seg.deco }}; background: {{ seg.bgL }}; color: {{ seg.fgL }}; border-right: {{ seg.brL }};">{{ seg.label }}</div>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <div onClick="{{ generate }}" style="flex: 1; height: 30px; border-radius: 4px; background: #23262b; color: #f7f8f9; display: grid; place-items: center; font-size: 11px; font-weight: 700; letter-spacing: 1.4px; box-shadow: 0 2px 6px rgba(20,25,35,0.3); cursor: pointer; user-select: none;" style-hover="background: #101215;" style-active="transform: translateY(1px);">GENERATE</div>
+        <div onClick="{{ clear }}" style="width: 76px; height: 30px; border-radius: 4px; background: rgba(255,255,255,0.40); border: 1px solid rgba(31,34,38,0.20); color: #4f565e; display: grid; place-items: center; font-size: 11px; font-weight: 600; letter-spacing: 1.4px; user-select: none; opacity: {{ clearOpacity }}; cursor: {{ clearCursor }};" style-hover="background: rgba(255,255,255,0.65);">CLEAR</div>
+      </div>
+
+      <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
+        <div style="border-top: 1px solid rgba(31,34,38,0.12);"></div>
+        <div style="display: flex; flex-direction: column; max-height: 350px; overflow-y: auto; overscroll-behavior: contain; margin-right: -14px; padding-right: 4px; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: rgba(31,34,38,0.28) transparent;">
+          <sc-for list="{{ rows }}" as="row" hint-placeholder-count="3">
+            <div style="display: flex; align-items: center; gap: 10px; min-height: 34px; flex: 0 0 auto; border-bottom: 1px solid rgba(31,34,38,0.08);">
+              <span style="flex: 0 0 auto; width: 18px; text-align: right; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; color: #6a7078;">{{ row.num }}</span>
+              <span onClick="{{ row.reveal }}" style="flex: 1; min-width: 0; font-family: 'Cascadia Mono', Consolas, monospace; font-size: {{ row.fontSize }}px; letter-spacing: 0.6px; line-height: 1.5; padding: {{ row.padV }} 0; word-break: break-all; color: #1f2226; overflow: hidden; text-overflow: ellipsis; white-space: {{ row.whiteSpace }};">{{ row.display }}</span>
+              <div onClick="{{ row.copy }}" style="height: 24px; padding: 0 8px; flex: 0 0 auto; border-radius: 4px; background: rgba(255,255,255,0.50); border: 1px solid rgba(31,34,38,0.22); color: #2b2f34; display: grid; place-items: center; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; cursor: pointer; user-select: none;" style-hover="background: rgba(255,255,255,0.85);">{{ row.copyLabel }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ copiedActive }}" hint-placeholder-val="{{ false }}">
+          <div style="font-family: 'Cascadia Mono', Consolas, monospace; font-size: 10.5px; letter-spacing: 1px; color: oklch(0.55 0.13 75);">▮ COPIED {{ copiedNum }} · CLIPBOARD RELEASES IN {{ copiedSecs }} S</div>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ infoOpen }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="LocalPass info pane" style="position: absolute; left: calc(100% + 14px); top: 0; width: 320px; box-sizing: border-box; z-index: 10; border-radius: 12px; padding: 12px 16px 14px 16px; background: linear-gradient(180deg, rgba(255,255,255,0.48), rgba(236,240,244,0.58)); border: 1px solid rgba(255,255,255,0.65); box-shadow: 0 16px 40px rgba(20,25,35,0.35); backdrop-filter: blur(18px) saturate(1.25); -webkit-backdrop-filter: blur(18px) saturate(1.25); display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: center; height: 20px;">
+            <div style="flex: 1; font-size: 10px; font-weight: 600; letter-spacing: 1.6px; color: #4f565e;">ABOUT LOCALPASS</div>
+            <div onClick="{{ closeInfo }}" style="width: 20px; height: 20px; display: grid; place-items: center; border-radius: 5px; color: #4f565e; font-size: 10px; cursor: pointer; user-select: none;" style-hover="background: rgba(31,34,38,0.10); color: #16181c;">✕</div>
+          </div>
+          <div style="border-top: 1px solid rgba(31,34,38,0.12);"></div>
+          <div style="font-size: 11.5px; line-height: 1.55; color: #24262a;">Passwords are generated entirely on this machine. Nothing is stored, logged, or sent anywhere.</div>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px; line-height: 1.5; color: #4f565e;">
+            <div><span style="color: #1f2226; font-weight: 600;">LENGTH · COUNT</span> — size and number of results.</div>
+            <div><span style="color: #1f2226; font-weight: 600;">a–z … !@#</span> — toggle character sets.</div>
+            <div><span style="color: #1f2226; font-weight: 600;">NO 0O1l</span> — drop look-alike characters.</div>
+            <div><span style="color: #1f2226; font-weight: 600;">✱</span> — mask results; click one to reveal.</div>
+            <div><span style="color: #1f2226; font-weight: 600;">◉</span> — keep the window on top.</div>
+          </div>
+          <div style="border-top: 1px solid rgba(31,34,38,0.12);"></div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="flex: 1; font-size: 10px; letter-spacing: 1.2px; font-weight: 600; color: #4f565e;">CLIPBOARD CLEAR TIMER</div>
+            <div style="width: 38px; text-align: center; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12px; color: #1f2226;">{{ clipSecs }} S</div>
+            <div onClick="{{ clipMinus }}" style="width: 22px; height: 22px; border-radius: 4px; background: rgba(255,255,255,0.55); border: 1px solid rgba(31,34,38,0.25); color: #2b2f34; display: grid; place-items: center; font-size: 13px; cursor: pointer; user-select: none; opacity: {{ clipMinusOp }};" style-hover="background: rgba(255,255,255,0.85);">−</div>
+            <div onClick="{{ clipPlus }}" style="width: 22px; height: 22px; border-radius: 4px; background: rgba(255,255,255,0.55); border: 1px solid rgba(31,34,38,0.25); color: #2b2f34; display: grid; place-items: center; font-size: 13px; cursor: pointer; user-select: none; opacity: {{ clipPlusOp }};" style-hover="background: rgba(255,255,255,0.85);">+</div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- ======== ROLLED-UP BAR ======== -->
+  <sc-if value="{{ collapsed }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ expand }}" data-screen-label="LocalPass rolled up" style="width: 356px; box-sizing: border-box; border-radius: 12px; padding: 8px 16px; background: {{ rolledBg }}; border: 1px solid {{ rolledBorder }}; display: flex; align-items: center; gap: 12px; cursor: pointer; opacity: 0.45; user-select: none;" style-hover="opacity: 1;">
+      <div style="flex: 1; font-size: 12px; font-weight: 600; letter-spacing: 2px; color: {{ rolledFg }};">LOCALPASS</div>
+      <div style="font-size: 10px; letter-spacing: 1.2px; font-weight: 600; color: {{ rolledMuted }};">CLICK TO EXPAND</div>
+    </div>
+  </sc-if>
+
+  <div style="font-size: 10px; letter-spacing: 1.4px; font-weight: 600; text-transform: uppercase; color: rgba(255,255,255,0.5);">Interactive mock · generate · copy · theme · roll up</div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;startTheme&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;dark&quot;, &quot;light&quot;], &quot;default&quot;: &quot;dark&quot;, &quot;tsType&quot;: &quot;'dark' | 'light'&quot;, &quot;section&quot;: &quot;Behavior&quot; },
+  &quot;clipboardSeconds&quot;: { &quot;editor&quot;: &quot;int&quot;, &quot;default&quot;: 30, &quot;min&quot;: 5, &quot;max&quot;: 60, &quot;step&quot;: 5, &quot;unit&quot;: &quot;s&quot;, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Behavior&quot; },
+  &quot;maskPasswords&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Behavior&quot; }
+}">
+class Component extends DCLogic {
+  state = {
+    theme: null, collapsed: false, pinned: true, masked: null,
+    length: 20, count: 3, lengthText: null, countText: null,
+    lower: true, upper: true, digits: true, symbols: true, nolook: true,
+    passwords: [], revealed: {}, copiedIndex: null, copiedSecs: 0,
+    infoOpen: false, clipSecs: null
+  };
+
+  componentWillUnmount() { this.stopTimer(); }
+
+  stopTimer() { if (this._timer) { clearInterval(this._timer); this._timer = null; } }
+
+  rnd(n) { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; }
+
+  charsets() {
+    const s = this.state; let cs = [];
+    if (s.lower) cs.push('abcdefghijklmnopqrstuvwxyz');
+    if (s.upper) cs.push('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+    if (s.digits) cs.push('0123456789');
+    if (s.symbols) cs.push('!@#$%^&*+-=?');
+    if (s.nolook) cs = cs.map(set => set.split('').filter(c => 'Il1O0o5S8B'.indexOf(c) < 0).join(''));
+    return cs.filter(x => x.length > 0);
+  }
+
+  genOne(sets, len) {
+    const all = sets.join('');
+    const chars = [];
+    sets.forEach(set => chars.push(set[this.rnd(set.length)]));
+    while (chars.length < len) chars.push(all[this.rnd(all.length)]);
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = this.rnd(i + 1); const t = chars[i]; chars[i] = chars[j]; chars[j] = t;
+    }
+    return chars.slice(0, len).join('');
+  }
+
+  generate = () => {
+    const sets = this.charsets();
+    if (!sets.length) return;
+    const out = [];
+    for (let i = 0; i < this.state.count; i++) out.push(this.genOne(sets, this.state.length));
+    this.stopTimer();
+    this.setState({ passwords: out, revealed: {}, copiedIndex: null, copiedSecs: 0 });
+  };
+
+  clear = () => {
+    if (!this.state.passwords.length) return;
+    this.stopTimer();
+    this.setState({ passwords: [], revealed: {}, copiedIndex: null, copiedSecs: 0 });
+  };
+
+  copy = (i) => {
+    try { navigator.clipboard.writeText(this.state.passwords[i]); } catch (e) {}
+    const secs = this.state.clipSecs ?? Math.min(60, Math.max(5, Math.round(this.props.clipboardSeconds ?? 30)));
+    this.stopTimer();
+    this.setState({ copiedIndex: i, copiedSecs: secs });
+    this._timer = setInterval(() => {
+      const s = this.state.copiedSecs - 1;
+      if (s <= 0) {
+        this.stopTimer();
+        try { navigator.clipboard.writeText(' '); } catch (e) {}
+        this.setState({ copiedIndex: null, copiedSecs: 0 });
+      } else {
+        this.setState({ copiedSecs: s });
+      }
+    }, 1000);
+  };
+
+  onSliderDown = (e) => {
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const upd = (x) => {
+      let p = (x - rect.left) / rect.width;
+      p = Math.max(0, Math.min(1, p));
+      this.setState({ length: Math.round(4 + p * 60), lengthText: null });
+    };
+    upd(e.clientX);
+    const move = (ev) => upd(ev.clientX);
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  onLengthChange = (e) => {
+    const v = e.target.value;
+    const n = parseInt(v, 10);
+    const st = { lengthText: v };
+    if (!isNaN(n) && n >= 4 && n <= 64) st.length = n;
+    this.setState(st);
+  };
+  onLengthBlur = () => {
+    const n = parseInt(this.state.lengthText, 10);
+    const len = isNaN(n) ? this.state.length : Math.max(4, Math.min(64, n));
+    this.setState({ length: len, lengthText: null });
+  };
+  onCountChange = (e) => {
+    const v = e.target.value;
+    const n = parseInt(v, 10);
+    const st = { countText: v };
+    if (!isNaN(n) && n >= 1 && n <= 99) st.count = n;
+    this.setState(st);
+  };
+  onCountBlur = () => {
+    const n = parseInt(this.state.countText, 10);
+    const c = isNaN(n) ? this.state.count : Math.max(1, Math.min(99, n));
+    this.setState({ count: c, countText: null });
+  };
+  onInputKey = (e) => { if (e.key === 'Enter') e.target.blur(); };
+
+  toggleSet(key) { this.setState(s => ({ [key]: !s[key] })); }
+
+  renderVals() {
+    const s = this.state;
+    const theme = s.theme ?? this.props.startTheme ?? 'dark';
+    const dark = theme === 'dark';
+    const mask = s.masked ?? this.props.maskPasswords ?? false;
+
+    const defs = [
+      { key: 'lower', label: 'a\u2013z', flex: 1 },
+      { key: 'upper', label: 'A\u2013Z', flex: 1 },
+      { key: 'digits', label: '0\u20139', flex: 1 },
+      { key: 'symbols', label: '!@#', flex: 1 },
+      { key: 'nolook', label: 'NO 0O1l', flex: 1.3, deco: 'none', tip: 'Exclude look-alike characters (0 O 1 l I \u2026)' }
+    ];
+    const segments = defs.map((d, i) => {
+      const on = s[d.key];
+      const last = i === defs.length - 1;
+      return {
+        label: d.label, flex: d.flex, toggle: () => this.toggleSet(d.key),
+        deco: d.deco ?? 'none',
+        tip: d.tip ?? '',
+        bgD: on ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.03)',
+        fgD: on ? '#f2f3f5' : '#79818a',
+        brD: last ? 'none' : '1px solid rgba(255,255,255,0.12)',
+        bgL: on ? 'rgba(31,34,38,0.12)' : 'rgba(255,255,255,0.40)',
+        fgL: on ? '#1f2226' : '#8a9098',
+        brL: last ? 'none' : '1px solid rgba(31,34,38,0.15)'
+      };
+    });
+
+    const rows = s.passwords.map((p, i) => {
+      // Fit-to-width: available track ~224px; Cascadia Mono advance ~0.62em + 0.6px letter-spacing.
+      // Below a 9px floor it stops shrinking and wraps to extra lines instead.
+      const fit = (224 / Math.max(p.length, 1) - 0.6) / 0.62;
+      const wrap = fit < 9;
+      const fontSize = wrap ? 11 : Math.round(Math.min(12, fit) * 10) / 10;
+      return {
+      num: String(i + 1).padStart(2, '0'),
+      fontSize,
+      whiteSpace: wrap ? 'normal' : 'nowrap',
+      padV: wrap ? '6px' : '0px',
+      display: (mask && !s.revealed[i]) ? '\u2022'.repeat(p.length) : p,
+      reveal: () => this.setState(prev => ({ revealed: Object.assign({}, prev.revealed, { [i]: !prev.revealed[i] }) })),
+      copy: () => this.copy(i),
+      copyLabel: s.copiedIndex === i ? 'COPIED' : 'COPY'
+      };
+    });
+
+    const hasResults = s.passwords.length > 0;
+    const clipSecs = s.clipSecs ?? Math.min(60, Math.max(5, Math.round(this.props.clipboardSeconds ?? 30)));
+    return {
+      infoOpen: s.infoOpen,
+      toggleInfo: () => this.setState({ infoOpen: !s.infoOpen }),
+      closeInfo: () => this.setState({ infoOpen: false }),
+      infoColorD: s.infoOpen ? '#f2f3f5' : '#6a7078',
+      infoColorL: s.infoOpen ? '#24262a' : '#9aa0a6',
+      clipSecs,
+      clipMinus: () => this.setState({ clipSecs: Math.max(5, clipSecs - 5) }),
+      clipPlus: () => this.setState({ clipSecs: Math.min(60, clipSecs + 5) }),
+      clipMinusOp: clipSecs <= 5 ? 0.35 : 1,
+      clipPlusOp: clipSecs >= 60 ? 0.35 : 1,
+      showDark: dark && !s.collapsed,
+      showLight: !dark && !s.collapsed,
+      collapsed: s.collapsed,
+      themeIcon: dark ? '\u25D0' : '\u25D1',
+      pinColorD: s.pinned ? '#f2f3f5' : '#6a7078',
+      pinColorL: s.pinned ? '#24262a' : '#9aa0a6',
+      maskColorD: mask ? '#f2f3f5' : '#6a7078',
+      maskColorL: mask ? '#24262a' : '#9aa0a6',
+      maskTip: mask ? 'Masking on \u2014 click a password to reveal' : 'Mask passwords',
+      toggleMask: () => this.setState({ masked: !mask, revealed: {} }),
+      toggleTheme: () => this.setState({ theme: dark ? 'light' : 'dark' }),
+      togglePin: () => this.setState({ pinned: !s.pinned }),
+      collapse: () => this.setState({ collapsed: true }),
+      expand: () => this.setState({ collapsed: false }),
+      lengthText: s.lengthText ?? String(s.length),
+      countText: s.countText ?? String(s.count),
+      onLengthChange: this.onLengthChange, onLengthBlur: this.onLengthBlur,
+      onCountChange: this.onCountChange, onCountBlur: this.onCountBlur,
+      onInputKey: this.onInputKey,
+      onSliderDown: this.onSliderDown,
+      sliderPct: Math.round(((s.length - 4) / 60) * 1000) / 10,
+      segments,
+      generate: this.generate,
+      clear: this.clear,
+      clearOpacity: hasResults ? 1 : 0.38,
+      clearCursor: hasResults ? 'pointer' : 'default',
+      rows,
+      hasResults,
+      copiedActive: s.copiedIndex !== null,
+      copiedNum: s.copiedIndex !== null ? String(s.copiedIndex + 1).padStart(2, '0') : '',
+      copiedSecs: s.copiedSecs,
+      rolledBg: dark ? 'linear-gradient(180deg, rgba(40,45,52,0.72), rgba(17,20,24,0.84))' : 'linear-gradient(180deg, rgba(255,255,255,0.68), rgba(236,240,244,0.78))',
+      rolledBorder: dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.80)',
+      rolledFg: dark ? '#f2f3f5' : '#24262a',
+      rolledMuted: dark ? '#b2b8be' : '#4f565e'
+    };
+  }
+}
+</script>
+</body>
+</html>

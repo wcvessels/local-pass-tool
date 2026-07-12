@@ -8,7 +8,6 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 namespace LocalPass
@@ -26,71 +25,87 @@ namespace LocalPass
             Loaded += delegate
             {
                 _active = true;
-                _body.UpdateLayout();
-                _expandedBodyHeight = _body.ActualHeight;
-                Opacity = Theme.HighContrast ? 1 : 0.90;
+                _shell.Opacity = 1;
+                RefreshRows();
             };
             Activated += delegate
             {
                 _active = true;
                 _rollTimer.Stop();
-                SetSecretsVisible(true);
                 Unroll();
-                AnimateOpacityTo(0.90);
+                _shell.Opacity = 1;
+                RefreshRows();
             };
             Deactivated += delegate
             {
                 _active = false;
-                SetSecretsVisible(false);
+                RefreshRows(false);
+                if (_infoPopup.IsOpen)
+                    return;
                 if (IsMouseOver)
                 {
                     _rollTimer.Stop();
                     Unroll();
-                    AnimateOpacityTo(0.72);
+                    if (!Theme.HighContrast)
+                        _shell.Opacity = 0.80;
                 }
                 else
                 {
                     ScheduleRollUp();
-                    AnimateOpacityTo(0.22);
+                    if (!Theme.HighContrast)
+                        _shell.Opacity = 0.50;
                 }
             };
             MouseEnter += delegate
             {
                 _rollTimer.Stop();
                 Unroll();
-                if (!_active)
-                    AnimateOpacityTo(0.72);
+                if (!_active && !Theme.HighContrast)
+                    _shell.Opacity = 0.80;
             };
             MouseLeave += delegate
             {
-                if (!_active)
+                if (!_active && !_infoPopup.IsOpen)
                 {
                     ScheduleRollUp();
-                    AnimateOpacityTo(0.22);
+                    if (!Theme.HighContrast)
+                        _shell.Opacity = 0.50;
                 }
+            };
+            _infoPopup.Opened += delegate { _rollTimer.Stop(); };
+            _infoPopup.Closed += delegate
+            {
+                if (!_active && !IsMouseOver)
+                    ScheduleRollUp();
             };
             _rollTimer.Tick += delegate
             {
                 _rollTimer.Stop();
-                if (!_active && !IsMouseOver)
+                if (!_active && !IsMouseOver && !_infoPopup.IsOpen && !_pendingClose)
                     RollUp();
             };
-
             _length.ValueChanged += delegate { _lengthValue.Text = ((int)_length.Value).ToString(); };
-            _lowercase.Unchecked += KeepOneCharacterGroup;
-            _uppercase.Unchecked += KeepOneCharacterGroup;
-            _numbers.Unchecked += KeepOneCharacterGroup;
-            _symbols.Unchecked += KeepOneCharacterGroup;
+            _lengthValue.PreviewTextInput += NumericPreviewTextInput;
+            _lengthValue.PreviewKeyDown += NumericKeyDown;
+            _lengthValue.LostKeyboardFocus += delegate { ReadLength(); };
+            DataObject.AddPastingHandler(_lengthValue, NumericPaste);
+
+            _count.PreviewTextInput += NumericPreviewTextInput;
+            _count.PreviewKeyDown += NumericKeyDown;
+            _count.LostKeyboardFocus += delegate { ReadCount(); };
+            DataObject.AddPastingHandler(_count, NumericPaste);
+
             _generate.Click += delegate { GeneratePasswords(); };
             _clear.Click += delegate { ClearAll(); };
+            _infoButton.Click += delegate { _infoPopup.IsOpen = !_infoPopup.IsOpen; };
             _theme.Click += delegate { ToggleTheme(); };
+            _close.Click += delegate { Close(); };
+            _mask.Checked += delegate { SetMask(true); };
+            _mask.Unchecked += delegate { SetMask(false); };
             _pin.Checked += delegate { Topmost = true; };
             _pin.Unchecked += delegate { Topmost = false; };
-
-            _count.PreviewTextInput += CountPreviewTextInput;
-            _count.PreviewKeyDown += CountKeyDown;
-            _count.LostKeyboardFocus += delegate { ReadCount(); };
-            DataObject.AddPastingHandler(_count, CountPaste);
+            _clipMinus.Click += delegate { ChangeClipboardSeconds(-5); };
+            _clipPlus.Click += delegate { ChangeClipboardSeconds(5); };
 
             _clipboardTimer.Tick += ClipboardTick;
             _statusHideTimer.Tick += delegate
@@ -104,15 +119,20 @@ namespace LocalPass
 
         private void GeneratePasswords()
         {
+            if (_lowercase.IsChecked != true &&
+                _uppercase.IsChecked != true &&
+                _numbers.IsChecked != true &&
+                _symbols.IsChecked != true)
+                return;
+
             bool oldClipboardReleased = RequestClipboardRelease();
             DropRows();
 
             try
             {
-                int count = ReadCount();
                 IList<string> passwords = PasswordGenerator.GenerateMany(
-                    count,
-                    (int)_length.Value,
+                    ReadCount(),
+                    ReadLength(),
                     _lowercase.IsChecked == true,
                     _uppercase.IsChecked == true,
                     _numbers.IsChecked == true,
@@ -122,30 +142,17 @@ namespace LocalPass
                 for (int i = 0; i < passwords.Count; i++)
                     AddPasswordRow(passwords[i], i + 1);
 
-                SetSecretsVisible(_active);
-                ShowResults(passwords.Count);
-
+                RefreshRows();
+                ShowResults();
                 if (oldClipboardReleased)
                     HideStatus();
                 else
-                    SetStatus("Waiting to release the previous clipboard value…", true, 0);
-
-                if (_rows.Count > 0)
-                {
-                    Button firstCopy = _rows[0].Copy;
-                    Dispatcher.BeginInvoke(
-                        DispatcherPriority.Input,
-                        new Action(delegate
-                        {
-                            if (firstCopy.IsVisible)
-                                firstCopy.Focus();
-                        }));
-                }
+                    SetStatus("WAITING TO RELEASE PREVIOUS CLIPBOARD VALUE…", true, 0);
             }
             catch (Exception exception)
             {
                 CollapseResults();
-                SetStatus(exception.Message, true, 2500);
+                SetStatus(exception.Message.ToUpperInvariant(), true, 2500);
             }
         }
 
@@ -156,72 +163,105 @@ namespace LocalPass
             row.Number = number;
 
             Border container = new Border();
-            container.Height = 40;
-            container.Margin = new Thickness(0, 0, 0, 4);
-            container.Padding = new Thickness(10, 4, 5, 4);
-            container.CornerRadius = new CornerRadius(11);
-            if (Theme.HighContrast)
-            {
-                container.Background = SystemColors.WindowBrush;
-                container.BorderBrush = SystemColors.WindowTextBrush;
-            }
-            else
-            {
-                container.SetResourceReference(Border.BackgroundProperty, Theme.BubbleFillKey);
-                container.SetResourceReference(Border.BorderBrushProperty, Theme.BubbleEdgeKey);
-            }
-            container.BorderThickness = new Thickness(1);
+            container.MinHeight = 34;
+            container.Padding = new Thickness(0, 4, 0, 4);
+            container.BorderThickness = new Thickness(0, 0, 0, 1);
+            container.SetResourceReference(Border.BorderBrushProperty, Theme.RowEdgeKey);
             AutomationProperties.SetName(container, "Password " + number);
             row.Container = container;
 
             Grid layout = new Grid();
+            layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(26) });
             layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             layout.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             container.Child = layout;
 
-            TextBlock display = Text("", 13, FontWeights.Normal, InkBrush());
+            TextBlock index = Text(number.ToString("00"), 10.5, FontWeights.Normal, MutedBrush());
+            index.SetResourceReference(TextBlock.ForegroundProperty, Theme.RowIndexKey);
+            index.FontFamily = Theme.MonoFont;
+            index.TextAlignment = TextAlignment.Right;
+            index.VerticalAlignment = VerticalAlignment.Center;
+            index.Margin = new Thickness(0, 0, 8, 0);
+            layout.Children.Add(index);
+
+            TextBlock display = Text("", PasswordFontSize(secret.Length), FontWeights.Normal, InkBrush());
             display.FontFamily = Theme.MonoFont;
             display.VerticalAlignment = VerticalAlignment.Center;
-            display.TextTrimming = TextTrimming.CharacterEllipsis;
-            display.Margin = new Thickness(0, 0, 7, 0);
+            display.Margin = new Thickness(0, 0, 8, 0);
+            display.Cursor = Cursors.Hand;
+            if (PasswordFontSize(secret.Length) < 9)
+            {
+                display.FontSize = 11;
+                display.TextWrapping = TextWrapping.Wrap;
+            }
+            else
+            {
+                display.TextWrapping = TextWrapping.NoWrap;
+            }
+            PasswordRow captured = row;
+            display.MouseLeftButtonDown += delegate
+            {
+                if (_mask.IsChecked == true && _active)
+                {
+                    captured.Revealed = !captured.Revealed;
+                    RefreshRow(captured);
+                }
+            };
             row.Display = display;
+            Grid.SetColumn(display, 1);
             layout.Children.Add(display);
 
             Button copy = new Button();
-            copy.Content = "Copy";
+            copy.Content = "COPY";
+            copy.Height = 24;
             copy.MinWidth = 52;
-            copy.Height = 30;
+            copy.FontSize = 10;
             AutomationProperties.SetName(copy, "Copy password " + number);
             Apply(copy, Styles.GhostButton);
-            PasswordRow captured = row;
             copy.Click += delegate { CopyPassword(captured); };
             row.Copy = copy;
-            Grid.SetColumn(copy, 1);
+            Grid.SetColumn(copy, 2);
             layout.Children.Add(copy);
 
             _rows.Add(row);
             _resultsPanel.Children.Add(container);
         }
 
+        private static double PasswordFontSize(int length)
+        {
+            return Math.Min(12, (280.0 / length - 0.6) / 0.62);
+        }
+
         private void CopyPassword(PasswordRow row)
         {
             if (_clipboard == null || !_clipboard.TryCopy(row.Secret))
             {
-                SetStatus("Clipboard busy — copy failed", true, 2500);
+                SetStatus("CLIPBOARD BUSY — COPY FAILED", true, 2500);
                 return;
             }
 
+            foreach (PasswordRow item in _rows)
+                item.Copy.Content = "COPY";
+            row.Copy.Content = "COPIED";
             _clearRequested = false;
             _clipboardAge.Restart();
             _clipboardTimer.Start();
-            SetStatus("Password " + row.Number + " copied · clipboard releases in 30 s", false, 0);
+            SetCopyStatus(row.Number, _clipboardSeconds);
+        }
+
+        private void SetCopyStatus(int number, int seconds)
+        {
+            SetStatus("▮ COPIED " + number.ToString("00") + " · CLIPBOARD RELEASES IN " + seconds + " S", false, 0);
         }
 
         private void ClearAll()
         {
             bool released = RequestClipboardRelease();
             CollapseResults();
-            SetStatus(released ? "Cleared" : "Cleared · waiting for clipboard", !released, released ? 1500 : 0);
+            if (!released)
+                SetStatus("CLEARED · WAITING FOR CLIPBOARD", true, 0);
+            else
+                HideStatus();
         }
 
         private bool RequestClipboardRelease()
@@ -259,19 +299,23 @@ namespace LocalPass
                 {
                     _clearRequested = false;
                     _clipboardTimer.Stop();
-                    SetStatus("Clipboard released", false, 1500);
+                    HideStatus();
                 }
                 else
                 {
-                    SetStatus("Waiting for clipboard…", true, 0);
+                    SetStatus("WAITING FOR CLIPBOARD…", true, 0);
                 }
                 return;
             }
 
-            int seconds = (int)Math.Ceiling(30 - _clipboardAge.Elapsed.TotalSeconds);
+            int seconds = (int)Math.Ceiling(_clipboardSeconds - _clipboardAge.Elapsed.TotalSeconds);
             if (seconds > 0)
             {
-                SetStatus("Password copied · clipboard releases in " + seconds + " s", false, 0);
+                PasswordRow copied = null;
+                foreach (PasswordRow row in _rows)
+                    if ((string)row.Copy.Content == "COPIED") copied = row;
+                if (copied != null)
+                    SetCopyStatus(copied.Number, seconds);
                 return;
             }
 
@@ -279,40 +323,29 @@ namespace LocalPass
             if (_clipboard == null || _clipboard.TryClearOwnedOnce())
             {
                 _clipboardTimer.Stop();
-                SetStatus("Clipboard released", false, 1500);
+                foreach (PasswordRow row in _rows)
+                    row.Copy.Content = "COPY";
+                HideStatus();
             }
             else
             {
                 _clearRequested = true;
-                SetStatus("Waiting for clipboard…", true, 0);
+                SetStatus("WAITING FOR CLIPBOARD…", true, 0);
             }
         }
 
-        private void ShowResults(int count)
+        private void ShowResults()
         {
-            double rowsHeight = Math.Min(3, count) * 44;
-            _resultsScroller.Height = rowsHeight;
-            double startHeight = _resultsHost.Visibility == Visibility.Visible
-                ? _resultsHost.ActualHeight
-                : 0;
             _resultsHost.Visibility = Visibility.Visible;
-            _clear.Visibility = Visibility.Visible;
-            AnimateHeight(_resultsHost, startHeight, rowsHeight, null);
+            _clear.IsEnabled = true;
         }
 
         private void CollapseResults()
         {
-            double startHeight = _resultsHost.ActualHeight;
-            SetSecretsVisible(false);
+            RefreshRows(false);
             DropRows();
-            _clear.Visibility = Visibility.Collapsed;
-            if (_resultsHost.Visibility != Visibility.Visible)
-                return;
-
-            AnimateHeight(_resultsHost, startHeight, 0, delegate
-            {
-                _resultsHost.Visibility = Visibility.Collapsed;
-            });
+            _resultsHost.Visibility = Visibility.Collapsed;
+            _clear.IsEnabled = false;
         }
 
         private void DropRows()
@@ -326,15 +359,35 @@ namespace LocalPass
             _rows.Clear();
         }
 
-        private void SetSecretsVisible(bool visible)
+        private void SetMask(bool masked)
         {
             foreach (PasswordRow row in _rows)
-            {
-                row.Display.Text = visible ? row.Secret : new string('•', row.Secret.Length);
-                AutomationProperties.SetName(
-                    row.Display,
-                    "Password " + row.Number + (visible ? ", visible" : ", hidden"));
-            }
+                row.Revealed = false;
+            _mask.ToolTip = masked ? "Show passwords" : "Mask passwords";
+            RefreshRows();
+        }
+
+        private void RefreshRows()
+        {
+            RefreshRows(_active);
+        }
+
+        private void RefreshRows(bool active)
+        {
+            foreach (PasswordRow row in _rows)
+                RefreshRow(row, active);
+        }
+
+        private void RefreshRow(PasswordRow row)
+        {
+            RefreshRow(row, _active);
+        }
+
+        private void RefreshRow(PasswordRow row, bool active)
+        {
+            bool hidden = !active || (_mask.IsChecked == true && !row.Revealed);
+            row.Display.Text = hidden ? new string('•', row.Secret.Length) : row.Secret;
+            AutomationProperties.SetName(row.Display, "Password " + row.Number + (hidden ? ", hidden" : ", visible"));
         }
 
         private void ToggleTheme()
@@ -344,14 +397,14 @@ namespace LocalPass
 
             Theme.Apply(!Theme.IsLight);
             _length.Style = Styles.SliderStyle();
-            _theme.Content = Theme.IsLight ? "\uE708" : "\uE706";
-            _theme.ToolTip = Theme.IsLight ? "Switch to gunmetal frost" : "Switch to light frost";
+            _theme.Content = Theme.IsLight ? "◑" : "◐";
+            _theme.ToolTip = Theme.IsLight ? "Switch to dark theme" : "Switch to light theme";
             InvalidateVisual();
         }
 
         private void ScheduleRollUp()
         {
-            if (Theme.HighContrast)
+            if (Theme.HighContrast || _infoPopup.IsOpen || _pendingClose)
                 return;
             _rollTimer.Stop();
             _rollTimer.Start();
@@ -361,95 +414,35 @@ namespace LocalPass
         {
             if (_rolledUp || Theme.HighContrast)
                 return;
-
-            SetSecretsVisible(false);
-            _expandedBodyHeight = Math.Max(1, _body.ActualHeight);
+            RefreshRows(false);
             _rolledUp = true;
-            AnimateHeight(_body, _body.ActualHeight, 0, null);
+            _body.Visibility = Visibility.Collapsed;
+            _headerButtons.Visibility = Visibility.Collapsed;
+            _collapsedHint.Visibility = Visibility.Visible;
+            _shell.Padding = new Thickness(16, 8, 16, 8);
+            _shell.SetResourceReference(Border.BackgroundProperty, Theme.RolledShellKey);
+            _shell.Opacity = 0.50;
         }
 
         private void Unroll()
         {
             _rollTimer.Stop();
-            if (!_rolledUp || Theme.HighContrast)
+            if (!_rolledUp)
                 return;
-
-            _body.BeginAnimation(FrameworkElement.HeightProperty, null);
-            _body.Height = Double.NaN;
-            _body.Measure(new Size(Math.Max(1, _body.ActualWidth), Double.PositiveInfinity));
-            double target = Math.Max(_expandedBodyHeight, _body.DesiredSize.Height);
-            _body.Height = 0;
             _rolledUp = false;
-            AnimateHeight(_body, 0, target, delegate
-            {
-                _body.BeginAnimation(FrameworkElement.HeightProperty, null);
-                _body.Height = Double.NaN;
-            });
+            _shell.Padding = new Thickness(16, 12, 16, 14);
+            _shell.SetResourceReference(Border.BackgroundProperty, Theme.ShellKey);
+            _body.Visibility = Visibility.Visible;
+            _headerButtons.Visibility = Visibility.Visible;
+            _collapsedHint.Visibility = Visibility.Collapsed;
+            RefreshRows();
         }
-
-        private void AnimateOpacityTo(double target)
+        private void ChangeClipboardSeconds(int change)
         {
-            if (Theme.HighContrast)
-            {
-                BeginAnimation(OpacityProperty, null);
-                Opacity = 1;
-                return;
-            }
-
-            if (!SystemParameters.ClientAreaAnimation)
-            {
-                BeginAnimation(OpacityProperty, null);
-                Opacity = target;
-                return;
-            }
-
-            DoubleAnimation animation = new DoubleAnimation();
-            animation.From = Opacity;
-            animation.To = target;
-            animation.Duration = TimeSpan.FromMilliseconds(180);
-            animation.EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut };
-            animation.FillBehavior = FillBehavior.Stop;
-            animation.Completed += delegate
-            {
-                BeginAnimation(OpacityProperty, null);
-                Opacity = target;
-            };
-            BeginAnimation(OpacityProperty, animation, HandoffBehavior.SnapshotAndReplace);
-        }
-
-        private static void AnimateHeight(
-            FrameworkElement element,
-            double from,
-            double to,
-            Action completed)
-        {
-            if (!SystemParameters.ClientAreaAnimation || Theme.HighContrast)
-            {
-                element.BeginAnimation(FrameworkElement.HeightProperty, null);
-                element.Height = to;
-                if (completed != null)
-                    completed();
-                return;
-            }
-
-            element.Height = Math.Max(0, from);
-            DoubleAnimation animation = new DoubleAnimation();
-            animation.From = Math.Max(0, from);
-            animation.To = Math.Max(0, to);
-            animation.Duration = TimeSpan.FromMilliseconds(190);
-            animation.EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseOut };
-            animation.FillBehavior = FillBehavior.Stop;
-            animation.Completed += delegate
-            {
-                element.BeginAnimation(FrameworkElement.HeightProperty, null);
-                element.Height = to;
-                if (completed != null)
-                    completed();
-            };
-            element.BeginAnimation(
-                FrameworkElement.HeightProperty,
-                animation,
-                HandoffBehavior.SnapshotAndReplace);
+            _clipboardSeconds = Math.Max(5, Math.Min(60, _clipboardSeconds + change));
+            _clipboardSecondsText.Text = _clipboardSeconds + " S";
+            _clipMinus.IsEnabled = _clipboardSeconds > 5;
+            _clipPlus.IsEnabled = _clipboardSeconds < 60;
         }
 
         private void SetStatus(string text, bool warning, int autoHideMilliseconds)
@@ -459,9 +452,7 @@ namespace LocalPass
             if (Theme.HighContrast)
                 _status.Foreground = warning ? SystemColors.WindowTextBrush : SystemColors.GrayTextBrush;
             else
-                _status.SetResourceReference(
-                    TextBlock.ForegroundProperty,
-                    warning ? Theme.WarningKey : Theme.MutedKey);
+                _status.SetResourceReference(TextBlock.ForegroundProperty, warning ? Theme.WarningKey : Theme.WarningKey);
             _status.Visibility = Visibility.Visible;
             AutomationProperties.SetName(_status, "Status: " + text);
 
@@ -479,18 +470,15 @@ namespace LocalPass
             _status.Visibility = Visibility.Collapsed;
         }
 
-        private void KeepOneCharacterGroup(object sender, RoutedEventArgs eventArgs)
+        private int ReadLength()
         {
-            if (_lowercase.IsChecked == true ||
-                _uppercase.IsChecked == true ||
-                _numbers.IsChecked == true ||
-                _symbols.IsChecked == true)
-                return;
-
-            ToggleButton option = sender as ToggleButton;
-            if (option != null)
-                option.IsChecked = true;
-            SetStatus("Keep at least one character group", true, 2000);
+            int length;
+            if (!Int32.TryParse(_lengthValue.Text, out length))
+                length = 20;
+            length = Math.Max(4, Math.Min(64, length));
+            _length.Value = length;
+            _lengthValue.Text = length.ToString();
+            return length;
         }
 
         private int ReadCount()
@@ -498,32 +486,49 @@ namespace LocalPass
             int count;
             if (!Int32.TryParse(_count.Text, out count))
                 count = 1;
-            count = Math.Max(1, Math.Min(50, count));
+            count = Math.Max(1, Math.Min(99, count));
             _count.Text = count.ToString();
             return count;
         }
 
-        private void CountPreviewTextInput(object sender, TextCompositionEventArgs eventArgs)
+        private void NumericPreviewTextInput(object sender, TextCompositionEventArgs eventArgs)
         {
             eventArgs.Handled = !IsDigits(eventArgs.Text);
         }
 
-        private void CountPaste(object sender, DataObjectPastingEventArgs eventArgs)
+        private void NumericPaste(object sender, DataObjectPastingEventArgs eventArgs)
         {
             string text = eventArgs.DataObject.GetData(typeof(string)) as string;
             if (!IsDigits(text))
                 eventArgs.CancelCommand();
         }
 
-        private void CountKeyDown(object sender, KeyEventArgs eventArgs)
+        private void NumericKeyDown(object sender, KeyEventArgs eventArgs)
         {
+            TextBox input = sender as TextBox;
+            if (input == null)
+                return;
+            if (eventArgs.Key == Key.Enter)
+            {
+                Keyboard.ClearFocus();
+                eventArgs.Handled = true;
+                return;
+            }
             if (eventArgs.Key != Key.Up && eventArgs.Key != Key.Down)
                 return;
 
-            int count = ReadCount();
-            count += eventArgs.Key == Key.Up ? 1 : -1;
-            _count.Text = Math.Max(1, Math.Min(50, count)).ToString();
-            _count.SelectAll();
+            int value;
+            if (!Int32.TryParse(input.Text, out value))
+                value = input == _lengthValue ? 20 : 1;
+            value += eventArgs.Key == Key.Up ? 1 : -1;
+            if (input == _lengthValue)
+                value = Math.Max(4, Math.Min(64, value));
+            else
+                value = Math.Max(1, Math.Min(99, value));
+            input.Text = value.ToString();
+            input.SelectAll();
+            if (input == _lengthValue)
+                _length.Value = value;
             eventArgs.Handled = true;
         }
 
@@ -532,10 +537,7 @@ namespace LocalPass
             if (String.IsNullOrEmpty(text))
                 return false;
             foreach (char character in text)
-            {
-                if (!Char.IsDigit(character))
-                    return false;
-            }
+                if (!Char.IsDigit(character)) return false;
             return true;
         }
 
@@ -558,6 +560,13 @@ namespace LocalPass
 
         private void DragHeader(object sender, MouseButtonEventArgs eventArgs)
         {
+            if (_rolledUp)
+            {
+                Unroll();
+                eventArgs.Handled = true;
+                return;
+            }
+
             DependencyObject source = eventArgs.OriginalSource as DependencyObject;
             while (source != null)
             {
@@ -575,9 +584,10 @@ namespace LocalPass
 
         private void WindowClosing(object sender, CancelEventArgs eventArgs)
         {
-            SetSecretsVisible(false);
-            DropRows();
+            _infoPopup.IsOpen = false;
             _rollTimer.Stop();
+            RefreshRows(false);
+            DropRows();
 
             if (_allowClose || _clipboard == null || _clipboard.TryClearOwned())
             {
@@ -595,11 +605,10 @@ namespace LocalPass
 
         internal void OnSessionEnding(object sender, SessionEndingCancelEventArgs eventArgs)
         {
-            SetSecretsVisible(false);
-            DropRows();
+            _infoPopup.IsOpen = false;
             _rollTimer.Stop();
-            // Bounded best effort. Windows owns final clipboard disposal during
-            // sign-out/shutdown; blocking the session would be worse behavior.
+            RefreshRows(false);
+            DropRows();
             if (_clipboard != null)
                 _clipboard.TryClearOwned();
             _allowClose = true;

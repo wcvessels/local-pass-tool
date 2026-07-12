@@ -20,39 +20,33 @@ namespace LocalPass
         internal const string FocusKey = "LocalPass.Focus";
         internal const string PrimaryTextKey = "LocalPass.PrimaryText";
         internal const string WarningKey = "LocalPass.Warning";
-        internal const string BubbleEdgeKey = "LocalPass.BubbleEdge";
-        internal const string HighlightKey = "LocalPass.Highlight";
+        internal const string BubbleEdgeKey = "LocalPass.ControlEdge";
+        internal const string ShellEdgeKey = "LocalPass.ShellEdge";
+        internal const string DividerKey = "LocalPass.Divider";
+        internal const string RowEdgeKey = "LocalPass.RowEdge";
+        internal const string SecondaryTextKey = "LocalPass.SecondaryText";
+        internal const string SegmentOffKey = "LocalPass.SegmentOff";
+        internal const string RowIndexKey = "LocalPass.RowIndex";
+        internal const string IconHoverKey = "LocalPass.IconHover";
         internal const string TrackKey = "LocalPass.Track";
         internal const string ShellKey = "LocalPass.Shell";
-        internal const string BubbleFillKey = "LocalPass.BubbleFill";
-        internal const string BubbleHoverKey = "LocalPass.BubbleHover";
-        internal const string BubblePressedKey = "LocalPass.BubblePressed";
+        internal const string InfoShellKey = "LocalPass.InfoShell";
+        internal const string RolledShellKey = "LocalPass.RolledShell";
+        internal const string BubbleFillKey = "LocalPass.ControlFill";
+        internal const string BubbleHoverKey = "LocalPass.ControlHover";
+        internal const string BubblePressedKey = "LocalPass.ControlPressed";
         internal const string SelectedFillKey = "LocalPass.SelectedFill";
         internal const string PrimaryFillKey = "LocalPass.PrimaryFill";
         internal const string PrimaryHoverKey = "LocalPass.PrimaryHover";
         internal const string PrimaryPressedKey = "LocalPass.PrimaryPressed";
 
-        // Replacing resources remains safe after WPF seals styles.
         internal static readonly ResourceDictionary Resources = new ResourceDictionary();
         internal static readonly Brush Transparent = Brushes.Transparent;
 
         internal static SolidColorBrush Ink { get { return SolidAt(InkKey); } }
         internal static SolidColorBrush Muted { get { return SolidAt(MutedKey); } }
         internal static SolidColorBrush Focus { get { return SolidAt(FocusKey); } }
-        internal static SolidColorBrush PrimaryText { get { return SolidAt(PrimaryTextKey); } }
-        internal static SolidColorBrush Warning { get { return SolidAt(WarningKey); } }
-        internal static SolidColorBrush BubbleEdge { get { return SolidAt(BubbleEdgeKey); } }
-        internal static SolidColorBrush Highlight { get { return SolidAt(HighlightKey); } }
         internal static SolidColorBrush Track { get { return SolidAt(TrackKey); } }
-        internal static LinearGradientBrush Shell { get { return GradientAt(ShellKey); } }
-        internal static LinearGradientBrush BubbleFill { get { return GradientAt(BubbleFillKey); } }
-        internal static LinearGradientBrush BubbleHover { get { return GradientAt(BubbleHoverKey); } }
-        internal static LinearGradientBrush BubblePressed { get { return GradientAt(BubblePressedKey); } }
-        internal static LinearGradientBrush SelectedFill { get { return GradientAt(SelectedFillKey); } }
-        internal static LinearGradientBrush PrimaryFill { get { return GradientAt(PrimaryFillKey); } }
-        internal static LinearGradientBrush PrimaryHover { get { return GradientAt(PrimaryHoverKey); } }
-        internal static LinearGradientBrush PrimaryPressed { get { return GradientAt(PrimaryPressedKey); } }
-
         internal static bool IsLight { get; private set; }
 
         static Theme()
@@ -67,39 +61,55 @@ namespace LocalPass
             {
                 Resources[InkKey] = Solid(255, 31, 34, 38);
                 Resources[MutedKey] = Solid(255, 79, 86, 94);
-                Resources[FocusKey] = Solid(255, 31, 34, 38);
+                Resources[FocusKey] = Solid(140, 31, 34, 38);
                 Resources[PrimaryTextKey] = Solid(255, 247, 248, 249);
                 Resources[WarningKey] = Solid(255, 132, 83, 24);
-                Resources[BubbleEdgeKey] = Solid(105, 78, 86, 95);
-                Resources[HighlightKey] = Solid(205, 255, 255, 255);
-                Resources[TrackKey] = Solid(150, 83, 91, 99);
-                Resources[ShellKey] = Gradient(Color.FromArgb(230, 255, 255, 255), Color.FromArgb(242, 230, 234, 238));
-                Resources[BubbleFillKey] = Gradient(Color.FromArgb(205, 255, 255, 255), Color.FromArgb(120, 216, 222, 227));
-                Resources[BubbleHoverKey] = Gradient(Color.FromArgb(242, 255, 255, 255), Color.FromArgb(165, 215, 221, 226));
-                Resources[BubblePressedKey] = Gradient(Color.FromArgb(170, 245, 247, 249), Color.FromArgb(120, 195, 202, 208));
-                Resources[SelectedFillKey] = Gradient(Color.FromArgb(225, 255, 255, 255), Color.FromArgb(170, 196, 203, 209));
-                Resources[PrimaryFillKey] = Gradient(Color.FromArgb(245, 91, 97, 105), Color.FromArgb(248, 43, 47, 53));
-                Resources[PrimaryHoverKey] = Gradient(Color.FromArgb(250, 106, 113, 121), Color.FromArgb(250, 49, 54, 61));
-                Resources[PrimaryPressedKey] = Gradient(Color.FromArgb(250, 68, 73, 80), Color.FromArgb(252, 33, 36, 41));
+                Resources[BubbleEdgeKey] = Solid(64, 31, 34, 38);
+                Resources[ShellEdgeKey] = Solid(166, 255, 255, 255);
+                Resources[DividerKey] = Solid(31, 31, 34, 38);
+                Resources[RowEdgeKey] = Solid(20, 31, 34, 38);
+                Resources[SecondaryTextKey] = Solid(255, 43, 47, 52);
+                Resources[SegmentOffKey] = Solid(255, 138, 144, 152);
+                Resources[RowIndexKey] = Solid(255, 106, 112, 120);
+                Resources[IconHoverKey] = Solid(26, 31, 34, 38);
+                Resources[TrackKey] = Solid(56, 31, 34, 38);
+                Resources[ShellKey] = Gradient(Color.FromArgb(115, 255, 255, 255), Color.FromArgb(140, 236, 240, 244));
+                Resources[InfoShellKey] = Gradient(Color.FromArgb(122, 255, 255, 255), Color.FromArgb(148, 236, 240, 244));
+                Resources[RolledShellKey] = Gradient(Color.FromArgb(173, 255, 255, 255), Color.FromArgb(199, 236, 240, 244));
+                Resources[BubbleFillKey] = Gradient(Color.FromArgb(128, 255, 255, 255), Color.FromArgb(128, 255, 255, 255));
+                Resources[BubbleHoverKey] = Gradient(Color.FromArgb(217, 255, 255, 255), Color.FromArgb(217, 255, 255, 255));
+                Resources[BubblePressedKey] = Gradient(Color.FromArgb(166, 255, 255, 255), Color.FromArgb(166, 255, 255, 255));
+                Resources[SelectedFillKey] = Gradient(Color.FromArgb(31, 31, 34, 38), Color.FromArgb(31, 31, 34, 38));
+                Resources[PrimaryFillKey] = Gradient(Color.FromArgb(255, 35, 38, 43), Color.FromArgb(255, 35, 38, 43));
+                Resources[PrimaryHoverKey] = Gradient(Color.FromArgb(255, 16, 18, 21), Color.FromArgb(255, 16, 18, 21));
+                Resources[PrimaryPressedKey] = Gradient(Color.FromArgb(255, 22, 24, 28), Color.FromArgb(255, 22, 24, 28));
             }
             else
             {
-                Resources[InkKey] = Solid(255, 244, 246, 248);
+                Resources[InkKey] = Solid(255, 242, 243, 245);
                 Resources[MutedKey] = Solid(255, 178, 184, 190);
-                Resources[FocusKey] = Solid(255, 248, 249, 250);
-                Resources[PrimaryTextKey] = Solid(255, 248, 249, 250);
+                Resources[FocusKey] = Solid(128, 255, 255, 255);
+                Resources[PrimaryTextKey] = Solid(255, 22, 24, 28);
                 Resources[WarningKey] = Solid(255, 229, 171, 102);
-                Resources[BubbleEdgeKey] = Solid(92, 255, 255, 255);
-                Resources[HighlightKey] = Solid(115, 255, 255, 255);
-                Resources[TrackKey] = Solid(145, 184, 190, 196);
-                Resources[ShellKey] = Gradient(Color.FromArgb(225, 46, 51, 57), Color.FromArgb(239, 20, 23, 27));
-                Resources[BubbleFillKey] = Gradient(Color.FromArgb(78, 255, 255, 255), Color.FromArgb(24, 255, 255, 255));
-                Resources[BubbleHoverKey] = Gradient(Color.FromArgb(112, 255, 255, 255), Color.FromArgb(43, 255, 255, 255));
-                Resources[BubblePressedKey] = Gradient(Color.FromArgb(52, 255, 255, 255), Color.FromArgb(17, 255, 255, 255));
-                Resources[SelectedFillKey] = Gradient(Color.FromArgb(125, 255, 255, 255), Color.FromArgb(48, 255, 255, 255));
-                Resources[PrimaryFillKey] = Gradient(Color.FromArgb(235, 96, 103, 112), Color.FromArgb(245, 48, 53, 60));
-                Resources[PrimaryHoverKey] = Gradient(Color.FromArgb(240, 114, 122, 132), Color.FromArgb(248, 56, 62, 70));
-                Resources[PrimaryPressedKey] = Gradient(Color.FromArgb(240, 75, 81, 89), Color.FromArgb(250, 38, 42, 48));
+                Resources[BubbleEdgeKey] = Solid(46, 255, 255, 255);
+                Resources[ShellEdgeKey] = Solid(41, 255, 255, 255);
+                Resources[DividerKey] = Solid(23, 255, 255, 255);
+                Resources[RowEdgeKey] = Solid(15, 255, 255, 255);
+                Resources[SecondaryTextKey] = Solid(255, 232, 235, 238);
+                Resources[SegmentOffKey] = Solid(255, 121, 129, 138);
+                Resources[RowIndexKey] = Solid(255, 138, 145, 153);
+                Resources[IconHoverKey] = Solid(26, 255, 255, 255);
+                Resources[TrackKey] = Solid(46, 255, 255, 255);
+                Resources[ShellKey] = Gradient(Color.FromArgb(133, 40, 45, 52), Color.FromArgb(158, 17, 20, 24));
+                Resources[InfoShellKey] = Gradient(Color.FromArgb(140, 40, 45, 52), Color.FromArgb(166, 17, 20, 24));
+                Resources[RolledShellKey] = Gradient(Color.FromArgb(184, 40, 45, 52), Color.FromArgb(214, 17, 20, 24));
+                Resources[BubbleFillKey] = Gradient(Color.FromArgb(18, 255, 255, 255), Color.FromArgb(18, 255, 255, 255));
+                Resources[BubbleHoverKey] = Gradient(Color.FromArgb(46, 255, 255, 255), Color.FromArgb(46, 255, 255, 255));
+                Resources[BubblePressedKey] = Gradient(Color.FromArgb(31, 255, 255, 255), Color.FromArgb(31, 255, 255, 255));
+                Resources[SelectedFillKey] = Gradient(Color.FromArgb(41, 255, 255, 255), Color.FromArgb(41, 255, 255, 255));
+                Resources[PrimaryFillKey] = Gradient(Color.FromArgb(255, 238, 241, 244), Color.FromArgb(255, 238, 241, 244));
+                Resources[PrimaryHoverKey] = Gradient(Color.FromArgb(255, 255, 255, 255), Color.FromArgb(255, 255, 255, 255));
+                Resources[PrimaryPressedKey] = Gradient(Color.FromArgb(255, 222, 226, 230), Color.FromArgb(255, 222, 226, 230));
             }
         }
 
@@ -108,14 +118,11 @@ namespace LocalPass
             return new DynamicResourceExtension(key);
         }
 
-        internal static Brush GlassBackground()
-        {
-            return HighContrast ? (Brush)SystemColors.WindowBrush : (Brush)Shell;
-        }
-
         private static SolidColorBrush Solid(byte alpha, byte red, byte green, byte blue)
         {
-            return new SolidColorBrush(Color.FromArgb(alpha, red, green, blue));
+            SolidColorBrush brush = new SolidColorBrush(Color.FromArgb(alpha, red, green, blue));
+            brush.Freeze();
+            return brush;
         }
 
         private static LinearGradientBrush Gradient(Color top, Color bottom)
@@ -125,6 +132,7 @@ namespace LocalPass
             gradient.EndPoint = new Point(0, 1);
             gradient.GradientStops.Add(new GradientStop(top, 0));
             gradient.GradientStops.Add(new GradientStop(bottom, 1));
+            gradient.Freeze();
             return gradient;
         }
 
@@ -132,24 +140,21 @@ namespace LocalPass
         {
             return (SolidColorBrush)Resources[key];
         }
-
-        private static LinearGradientBrush GradientAt(string key)
-        {
-            return (LinearGradientBrush)Resources[key];
-        }
     }
 
     internal static class Styles
     {
         internal static readonly Style PrimaryButton = CreatePrimaryButton();
         internal static readonly Style GhostButton = CreateGhostButton();
-        internal static readonly Style Toggle = CreateToggle();
+        internal static readonly Style IconButton = CreateIconButton(typeof(Button));
+        internal static readonly Style IconToggle = CreateIconButton(typeof(ToggleButton));
+        internal static readonly Style SegmentToggle = CreateSegmentToggle();
         internal static readonly Style Input = CreateInput();
+        internal static readonly Style ThinScrollBar = CreateThinScrollBar();
 
         internal static Style SliderStyle()
         {
-            string focus = Theme.Focus.Color.ToString();
-            string ink = Theme.Ink.Color.ToString();
+            string fill = Theme.Ink.Color.ToString();
             string track = Theme.Track.Color.ToString();
             string xaml =
                 "<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' " +
@@ -157,110 +162,94 @@ namespace LocalPass
                 "<Setter Property='Cursor' Value='Hand'/>" +
                 "<Setter Property='Template'><Setter.Value>" +
                 "<ControlTemplate TargetType='{x:Type Slider}'>" +
-                "<Grid Height='24' Background='Transparent'>" +
-                "<Border x:Name='Focus' Margin='0,1' CornerRadius='7' BorderThickness='2' BorderBrush='Transparent'/>" +
-                "<Track x:Name='PART_Track' Margin='6,0' VerticalAlignment='Center' " +
+                "<Grid Height='16' Background='Transparent'>" +
+                "<Track x:Name='PART_Track' Margin='5,0' VerticalAlignment='Center' " +
                 "Minimum='{TemplateBinding Minimum}' Maximum='{TemplateBinding Maximum}' " +
                 "Value='{TemplateBinding Value}' Orientation='{TemplateBinding Orientation}' " +
                 "IsDirectionReversed='{TemplateBinding IsDirectionReversed}'>" +
-                "<Track.DecreaseRepeatButton>" +
-                "<RepeatButton Command='{x:Static Slider.DecreaseLarge}' Focusable='False'>" +
-                "<RepeatButton.Template><ControlTemplate TargetType='{x:Type RepeatButton}'>" +
-                "<Border Height='4' CornerRadius='2' Background='" + focus + "'/>" +
-                "</ControlTemplate></RepeatButton.Template></RepeatButton>" +
-                "</Track.DecreaseRepeatButton>" +
-                "<Track.IncreaseRepeatButton>" +
-                "<RepeatButton Command='{x:Static Slider.IncreaseLarge}' Focusable='False'>" +
-                "<RepeatButton.Template><ControlTemplate TargetType='{x:Type RepeatButton}'>" +
-                "<Border Height='4' CornerRadius='2' Background='" + track + "'/>" +
-                "</ControlTemplate></RepeatButton.Template></RepeatButton>" +
-                "</Track.IncreaseRepeatButton>" +
-                "<Track.Thumb><Thumb Width='14' Height='14' Focusable='False'>" +
-                "<Thumb.Template><ControlTemplate TargetType='{x:Type Thumb}'>" +
-                "<Border x:Name='Dot' CornerRadius='7' Background='" + ink + "' " +
-                "BorderBrush='" + focus + "' BorderThickness='2'>" +
-                "<Border.Effect><DropShadowEffect BlurRadius='5' ShadowDepth='1' Opacity='.45'/></Border.Effect>" +
-                "</Border>" +
-                "<ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'>" +
-                "<Setter TargetName='Dot' Property='Opacity' Value='.78'/>" +
-                "</Trigger></ControlTemplate.Triggers>" +
-                "</ControlTemplate></Thumb.Template></Thumb></Track.Thumb>" +
-                "</Track>" +
-                "</Grid>" +
-                "<ControlTemplate.Triggers><Trigger Property='IsKeyboardFocusWithin' Value='True'>" +
-                "<Setter TargetName='Focus' Property='BorderBrush' Value='" + focus + "'/>" +
-                "</Trigger></ControlTemplate.Triggers>" +
-                "</ControlTemplate>" +
-                "</Setter.Value></Setter></Style>";
+                "<Track.DecreaseRepeatButton><RepeatButton Command='{x:Static Slider.DecreaseLarge}' Focusable='False'>" +
+                "<RepeatButton.Template><ControlTemplate TargetType='{x:Type RepeatButton}'><Border Height='2' Background='" + fill + "'/></ControlTemplate></RepeatButton.Template>" +
+                "</RepeatButton></Track.DecreaseRepeatButton>" +
+                "<Track.IncreaseRepeatButton><RepeatButton Command='{x:Static Slider.IncreaseLarge}' Focusable='False'>" +
+                "<RepeatButton.Template><ControlTemplate TargetType='{x:Type RepeatButton}'><Border Height='2' Background='" + track + "'/></ControlTemplate></RepeatButton.Template>" +
+                "</RepeatButton></Track.IncreaseRepeatButton>" +
+                "<Track.Thumb><Thumb Width='10' Height='10' Focusable='False'>" +
+                "<Thumb.Template><ControlTemplate TargetType='{x:Type Thumb}'><Border CornerRadius='2' Background='" + fill + "'>" +
+                "<Border.Effect><DropShadowEffect BlurRadius='3' ShadowDepth='1' Opacity='.35'/></Border.Effect>" +
+                "</Border></ControlTemplate></Thumb.Template></Thumb></Track.Thumb>" +
+                "</Track></Grid></ControlTemplate></Setter.Value></Setter></Style>";
             return (Style)XamlReader.Parse(xaml);
         }
 
         private static Style CreatePrimaryButton()
         {
-            Style style = ButtonBaseStyle(typeof(Button), 11);
+            Style style = ButtonBaseStyle(typeof(Button), 4);
             style.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(Theme.PrimaryFillKey)));
             style.Setters.Add(new Setter(Control.ForegroundProperty, Theme.Dynamic(Theme.PrimaryTextKey)));
-            style.Setters.Add(new Setter(Control.BorderBrushProperty, Theme.Dynamic(Theme.BubbleEdgeKey)));
-            style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(1)));
-            style.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.SemiBold));
-            style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(12, 6, 12, 6)));
-
-            Trigger hover = Trigger(UIElement.IsMouseOverProperty, true);
-            hover.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(Theme.PrimaryHoverKey)));
-            style.Triggers.Add(hover);
-            Trigger pressed = Trigger(ButtonBase.IsPressedProperty, true);
-            pressed.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(Theme.PrimaryPressedKey)));
-            pressed.Setters.Add(new Setter(UIElement.RenderTransformProperty, new TranslateTransform(0, 1)));
-            style.Triggers.Add(pressed);
+            style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+            style.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Bold));
+            style.Setters.Add(new Setter(UIElement.EffectProperty, Shadow()));
+            AddBackgroundState(style, Theme.PrimaryHoverKey, Theme.PrimaryPressedKey, true);
             AddDisabled(style);
             return style;
         }
 
         private static Style CreateGhostButton()
         {
-            Style style = ButtonBaseStyle(typeof(Button), 10);
+            Style style = ButtonBaseStyle(typeof(Button), 4);
             style.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(Theme.BubbleFillKey)));
-            style.Setters.Add(new Setter(Control.ForegroundProperty, Theme.Dynamic(Theme.InkKey)));
+            style.Setters.Add(new Setter(Control.ForegroundProperty, Theme.Dynamic(Theme.SecondaryTextKey)));
             style.Setters.Add(new Setter(Control.BorderBrushProperty, Theme.Dynamic(Theme.BubbleEdgeKey)));
             style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(1)));
-            style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(8, 5, 8, 5)));
-
-            Trigger hover = Trigger(UIElement.IsMouseOverProperty, true);
-            hover.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(Theme.BubbleHoverKey)));
-            style.Triggers.Add(hover);
-            Trigger pressed = Trigger(ButtonBase.IsPressedProperty, true);
-            pressed.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(Theme.BubblePressedKey)));
-            pressed.Setters.Add(new Setter(UIElement.RenderTransformProperty, new TranslateTransform(0, 1)));
-            style.Triggers.Add(pressed);
+            AddBackgroundState(style, Theme.BubbleHoverKey, Theme.BubblePressedKey, false);
             AddDisabled(style);
             return style;
         }
 
-        private static Style CreateToggle()
+        private static Style CreateIconButton(Type type)
         {
-            Style style = ButtonBaseStyle(typeof(ToggleButton), 10);
-            style.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(Theme.BubbleFillKey)));
+            Style style = ButtonBaseStyle(type, 5);
+            style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
             style.Setters.Add(new Setter(Control.ForegroundProperty, Theme.Dynamic(Theme.MutedKey)));
-            style.Setters.Add(new Setter(Control.BorderBrushProperty, Theme.Dynamic(Theme.BubbleEdgeKey)));
-            style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(1)));
-            style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(8, 5, 8, 5)));
-            style.Setters.Add(new Setter(Control.FontSizeProperty, 12.0));
+            style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+            style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
 
             Trigger hover = Trigger(UIElement.IsMouseOverProperty, true);
-            hover.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(Theme.BubbleHoverKey)));
+            hover.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(Theme.IconHoverKey)));
             hover.Setters.Add(new Setter(Control.ForegroundProperty, Theme.Dynamic(Theme.InkKey)));
             style.Triggers.Add(hover);
 
-            Trigger checkedState = Trigger(ToggleButton.IsCheckedProperty, true);
-            checkedState.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(Theme.SelectedFillKey)));
-            checkedState.Setters.Add(new Setter(Control.ForegroundProperty, Theme.Dynamic(Theme.InkKey)));
-            checkedState.Setters.Add(new Setter(Control.BorderBrushProperty, Theme.Dynamic(Theme.FocusKey)));
-            style.Triggers.Add(checkedState);
-
             Trigger pressed = Trigger(ButtonBase.IsPressedProperty, true);
-            pressed.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(Theme.BubblePressedKey)));
-            pressed.Setters.Add(new Setter(UIElement.RenderTransformProperty, new TranslateTransform(0, 1)));
+            pressed.Setters.Add(new Setter(UIElement.OpacityProperty, 0.72));
             style.Triggers.Add(pressed);
+
+            if (type == typeof(ToggleButton))
+            {
+                Trigger selected = Trigger(ToggleButton.IsCheckedProperty, true);
+                selected.Setters.Add(new Setter(Control.ForegroundProperty, Theme.Dynamic(Theme.InkKey)));
+                style.Triggers.Add(selected);
+            }
+            AddDisabled(style);
+            return style;
+        }
+
+        private static Style CreateSegmentToggle()
+        {
+            Style style = ButtonBaseStyle(typeof(ToggleButton), 0);
+            style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+            style.Setters.Add(new Setter(Control.ForegroundProperty, Theme.Dynamic(Theme.SegmentOffKey)));
+            style.Setters.Add(new Setter(Control.BorderBrushProperty, Theme.Dynamic(Theme.BubbleEdgeKey)));
+            style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+            style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4, 0, 4, 0)));
+
+            Trigger hover = Trigger(UIElement.IsMouseOverProperty, true);
+            hover.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(Theme.IconHoverKey)));
+            style.Triggers.Add(hover);
+
+            Trigger selected = Trigger(ToggleButton.IsCheckedProperty, true);
+            selected.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(Theme.SelectedFillKey)));
+            selected.Setters.Add(new Setter(Control.ForegroundProperty, Theme.Dynamic(Theme.InkKey)));
+            style.Triggers.Add(selected);
             AddDisabled(style);
             return style;
         }
@@ -272,11 +261,20 @@ namespace LocalPass
             style.Setters.Add(new Setter(Control.ForegroundProperty, Theme.Dynamic(Theme.InkKey)));
             style.Setters.Add(new Setter(Control.BorderBrushProperty, Theme.Dynamic(Theme.BubbleEdgeKey)));
             style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(1)));
-            style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(8, 4, 8, 4)));
+            style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
             style.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
             style.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
-            style.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.SemiBold));
+            style.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Normal));
             style.Setters.Add(new Setter(Control.TemplateProperty, InputTemplate()));
+            return style;
+        }
+
+        private static Style CreateThinScrollBar()
+        {
+            Style style = new Style(typeof(ScrollBar));
+            style.Setters.Add(new Setter(FrameworkElement.WidthProperty, 6.0));
+            style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+            style.Setters.Add(new Setter(UIElement.OpacityProperty, 0.55));
             return style;
         }
 
@@ -284,12 +282,11 @@ namespace LocalPass
         {
             Style style = new Style(type);
             style.Setters.Add(new Setter(Control.FontFamilyProperty, Theme.UiFont));
-            style.Setters.Add(new Setter(Control.FontSizeProperty, 12.5));
+            style.Setters.Add(new Setter(Control.FontSizeProperty, 11.0));
             style.Setters.Add(new Setter(Control.CursorProperty, System.Windows.Input.Cursors.Hand));
             style.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
             style.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
             style.Setters.Add(new Setter(UIElement.RenderTransformOriginProperty, new Point(0.5, 0.5)));
-            style.Setters.Add(new Setter(UIElement.EffectProperty, Shadow()));
             style.Setters.Add(new Setter(Control.TemplateProperty, ButtonTemplate(type, radius)));
             return style;
         }
@@ -297,31 +294,12 @@ namespace LocalPass
         private static ControlTemplate ButtonTemplate(Type type, double radius)
         {
             ControlTemplate template = new ControlTemplate(type);
-            FrameworkElementFactory root = new FrameworkElementFactory(typeof(Grid));
-
-            FrameworkElementFactory focus = new FrameworkElementFactory(typeof(Border), "focus");
-            focus.SetValue(Border.CornerRadiusProperty, new CornerRadius(radius + 2));
-            focus.SetValue(Border.BorderThicknessProperty, new Thickness(2));
-            focus.SetValue(Border.BorderBrushProperty, Brushes.Transparent);
-            root.AppendChild(focus);
-
             FrameworkElementFactory body = new FrameworkElementFactory(typeof(Border), "body");
-            body.SetValue(Border.MarginProperty, new Thickness(2));
             body.SetValue(Border.CornerRadiusProperty, new CornerRadius(radius));
             body.SetBinding(Border.BackgroundProperty, ParentBinding("Background"));
             body.SetBinding(Border.BorderBrushProperty, ParentBinding("BorderBrush"));
             body.SetBinding(Border.BorderThicknessProperty, ParentBinding("BorderThickness"));
             body.SetBinding(Border.PaddingProperty, ParentBinding("Padding"));
-
-            FrameworkElementFactory layers = new FrameworkElementFactory(typeof(Grid));
-            FrameworkElementFactory highlight = new FrameworkElementFactory(typeof(Border));
-            highlight.SetValue(Border.HeightProperty, 2.0);
-            highlight.SetValue(Border.MarginProperty, new Thickness(4, 1, 4, 0));
-            highlight.SetValue(Border.VerticalAlignmentProperty, VerticalAlignment.Top);
-            highlight.SetValue(Border.CornerRadiusProperty, new CornerRadius(radius));
-            highlight.SetResourceReference(Border.BackgroundProperty, Theme.HighlightKey);
-            highlight.SetValue(UIElement.IsHitTestVisibleProperty, false);
-            layers.AppendChild(highlight);
 
             FrameworkElementFactory content = new FrameworkElementFactory(typeof(ContentPresenter));
             content.SetValue(ContentPresenter.RecognizesAccessKeyProperty, true);
@@ -329,66 +307,44 @@ namespace LocalPass
             content.SetBinding(ContentPresenter.ContentTemplateProperty, ParentBinding("ContentTemplate"));
             content.SetBinding(ContentPresenter.HorizontalAlignmentProperty, ParentBinding("HorizontalContentAlignment"));
             content.SetBinding(ContentPresenter.VerticalAlignmentProperty, ParentBinding("VerticalContentAlignment"));
-            layers.AppendChild(content);
-            body.AppendChild(layers);
-            root.AppendChild(body);
-
-            if (type == typeof(ToggleButton))
-            {
-                FrameworkElementFactory indicator =
-                    new FrameworkElementFactory(typeof(Border), "selectedIndicator");
-                indicator.SetValue(FrameworkElement.WidthProperty, 6.0);
-                indicator.SetValue(FrameworkElement.HeightProperty, 6.0);
-                indicator.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Right);
-                indicator.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top);
-                indicator.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 6, 7, 0));
-                indicator.SetValue(Border.CornerRadiusProperty, new CornerRadius(3));
-                indicator.SetValue(UIElement.VisibilityProperty, Visibility.Collapsed);
-                indicator.SetValue(UIElement.IsHitTestVisibleProperty, false);
-                indicator.SetResourceReference(Border.BackgroundProperty, Theme.FocusKey);
-                root.AppendChild(indicator);
-            }
-            template.VisualTree = root;
+            body.AppendChild(content);
+            template.VisualTree = body;
 
             Trigger focused = Trigger(UIElement.IsKeyboardFocusedProperty, true);
-            focused.Setters.Add(new Setter(Border.BorderBrushProperty, Theme.Dynamic(Theme.FocusKey), "focus"));
+            focused.Setters.Add(new Setter(Border.BorderBrushProperty, Theme.Dynamic(Theme.FocusKey), "body"));
             template.Triggers.Add(focused);
-            if (type == typeof(ToggleButton))
-            {
-                Trigger selected = Trigger(ToggleButton.IsCheckedProperty, true);
-                selected.Setters.Add(
-                    new Setter(UIElement.VisibilityProperty, Visibility.Visible, "selectedIndicator"));
-                template.Triggers.Add(selected);
-            }
             return template;
         }
 
         private static ControlTemplate InputTemplate()
         {
             ControlTemplate template = new ControlTemplate(typeof(TextBox));
-            FrameworkElementFactory root = new FrameworkElementFactory(typeof(Grid));
-            FrameworkElementFactory focus = new FrameworkElementFactory(typeof(Border), "focus");
-            focus.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
-            focus.SetValue(Border.BorderThicknessProperty, new Thickness(2));
-            focus.SetValue(Border.BorderBrushProperty, Brushes.Transparent);
-            root.AppendChild(focus);
-
-            FrameworkElementFactory body = new FrameworkElementFactory(typeof(Border));
-            body.SetValue(Border.MarginProperty, new Thickness(2));
-            body.SetValue(Border.CornerRadiusProperty, new CornerRadius(6));
+            FrameworkElementFactory body = new FrameworkElementFactory(typeof(Border), "body");
+            body.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
             body.SetBinding(Border.BackgroundProperty, ParentBinding("Background"));
             body.SetBinding(Border.BorderBrushProperty, ParentBinding("BorderBrush"));
             body.SetBinding(Border.BorderThicknessProperty, ParentBinding("BorderThickness"));
             FrameworkElementFactory host = new FrameworkElementFactory(typeof(ScrollViewer), "PART_ContentHost");
             host.SetBinding(Control.PaddingProperty, ParentBinding("Padding"));
             body.AppendChild(host);
-            root.AppendChild(body);
-            template.VisualTree = root;
+            template.VisualTree = body;
 
             Trigger focused = Trigger(UIElement.IsKeyboardFocusedProperty, true);
-            focused.Setters.Add(new Setter(Border.BorderBrushProperty, Theme.Dynamic(Theme.FocusKey), "focus"));
+            focused.Setters.Add(new Setter(Border.BorderBrushProperty, Theme.Dynamic(Theme.FocusKey), "body"));
             template.Triggers.Add(focused);
             return template;
+        }
+
+        private static void AddBackgroundState(Style style, string hoverKey, string pressedKey, bool movePressed)
+        {
+            Trigger hover = Trigger(UIElement.IsMouseOverProperty, true);
+            hover.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(hoverKey)));
+            style.Triggers.Add(hover);
+            Trigger pressed = Trigger(ButtonBase.IsPressedProperty, true);
+            pressed.Setters.Add(new Setter(Control.BackgroundProperty, Theme.Dynamic(pressedKey)));
+            if (movePressed)
+                pressed.Setters.Add(new Setter(UIElement.RenderTransformProperty, new TranslateTransform(0, 1)));
+            style.Triggers.Add(pressed);
         }
 
         private static Binding ParentBinding(string path)
@@ -409,9 +365,9 @@ namespace LocalPass
         private static DropShadowEffect Shadow()
         {
             DropShadowEffect shadow = new DropShadowEffect();
-            shadow.BlurRadius = 7;
+            shadow.BlurRadius = 6;
             shadow.ShadowDepth = 2;
-            shadow.Opacity = 0.32;
+            shadow.Opacity = 0.30;
             shadow.Color = Colors.Black;
             shadow.Freeze();
             return shadow;
@@ -421,6 +377,7 @@ namespace LocalPass
         {
             Trigger disabled = Trigger(UIElement.IsEnabledProperty, false);
             disabled.Setters.Add(new Setter(UIElement.OpacityProperty, 0.38));
+            disabled.Setters.Add(new Setter(Control.CursorProperty, System.Windows.Input.Cursors.Arrow));
             style.Triggers.Add(disabled);
         }
     }
