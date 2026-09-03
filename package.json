@@ -1,0 +1,24 @@
+{
+  "name": "localpass",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "tauri": "tauri",
+    "tauri:check:native": "tauri build --ci --no-bundle -- --locked",
+    "tauri:bundle:windows:unsigned": "tauri build --ci --no-sign --bundles nsis -- --locked",
+    "tauri:bundle:macos:unsigned": "tauri build --ci --no-sign --bundles dmg -- --locked",
+    "tauri:bundle:linux:unsigned": "tauri build --ci --no-sign --bundles appimage,deb -- --locked",
+    "verify:boundary": "npm run build && node scripts/verify-boundary.mjs"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.11.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4",
+    "typescript": "5.9.3",
+    "vite": "7.3.6"
+  }
+}

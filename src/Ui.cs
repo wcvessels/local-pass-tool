@@ -70,12 +70,12 @@ namespace LocalPass
                 Resources[RowEdgeKey] = Solid(20, 31, 34, 38);
                 Resources[SecondaryTextKey] = Solid(255, 43, 47, 52);
                 Resources[SegmentOffKey] = Solid(255, 138, 144, 152);
-                Resources[RowIndexKey] = Solid(255, 106, 112, 120);
+                Resources[RowIndexKey] = Solid(255, 79, 86, 94);
                 Resources[IconHoverKey] = Solid(26, 31, 34, 38);
                 Resources[TrackKey] = Solid(56, 31, 34, 38);
-                Resources[ShellKey] = Gradient(Color.FromArgb(115, 255, 255, 255), Color.FromArgb(140, 236, 240, 244));
-                Resources[InfoShellKey] = Gradient(Color.FromArgb(122, 255, 255, 255), Color.FromArgb(148, 236, 240, 244));
-                Resources[RolledShellKey] = Gradient(Color.FromArgb(173, 255, 255, 255), Color.FromArgb(199, 236, 240, 244));
+                Resources[ShellKey] = Gradient(Color.FromArgb(230, 255, 255, 255), Color.FromArgb(230, 236, 240, 244));
+                Resources[InfoShellKey] = Resources[ShellKey];
+                Resources[RolledShellKey] = Resources[ShellKey];
                 Resources[BubbleFillKey] = Gradient(Color.FromArgb(128, 255, 255, 255), Color.FromArgb(128, 255, 255, 255));
                 Resources[BubbleHoverKey] = Gradient(Color.FromArgb(217, 255, 255, 255), Color.FromArgb(217, 255, 255, 255));
                 Resources[BubblePressedKey] = Gradient(Color.FromArgb(166, 255, 255, 255), Color.FromArgb(166, 255, 255, 255));
@@ -97,12 +97,12 @@ namespace LocalPass
                 Resources[RowEdgeKey] = Solid(15, 255, 255, 255);
                 Resources[SecondaryTextKey] = Solid(255, 232, 235, 238);
                 Resources[SegmentOffKey] = Solid(255, 121, 129, 138);
-                Resources[RowIndexKey] = Solid(255, 138, 145, 153);
+                Resources[RowIndexKey] = Solid(255, 178, 184, 190);
                 Resources[IconHoverKey] = Solid(26, 255, 255, 255);
                 Resources[TrackKey] = Solid(46, 255, 255, 255);
-                Resources[ShellKey] = Gradient(Color.FromArgb(133, 40, 45, 52), Color.FromArgb(158, 17, 20, 24));
-                Resources[InfoShellKey] = Gradient(Color.FromArgb(140, 40, 45, 52), Color.FromArgb(166, 17, 20, 24));
-                Resources[RolledShellKey] = Gradient(Color.FromArgb(184, 40, 45, 52), Color.FromArgb(214, 17, 20, 24));
+                Resources[ShellKey] = Gradient(Color.FromArgb(230, 40, 45, 52), Color.FromArgb(230, 17, 20, 24));
+                Resources[InfoShellKey] = Resources[ShellKey];
+                Resources[RolledShellKey] = Resources[ShellKey];
                 Resources[BubbleFillKey] = Gradient(Color.FromArgb(18, 255, 255, 255), Color.FromArgb(18, 255, 255, 255));
                 Resources[BubbleHoverKey] = Gradient(Color.FromArgb(46, 255, 255, 255), Color.FromArgb(46, 255, 255, 255));
                 Resources[BubblePressedKey] = Gradient(Color.FromArgb(31, 255, 255, 255), Color.FromArgb(31, 255, 255, 255));
@@ -271,11 +271,34 @@ namespace LocalPass
 
         private static Style CreateThinScrollBar()
         {
-            Style style = new Style(typeof(ScrollBar));
-            style.Setters.Add(new Setter(FrameworkElement.WidthProperty, 6.0));
-            style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
-            style.Setters.Add(new Setter(UIElement.OpacityProperty, 0.55));
-            return style;
+            string xaml =
+                "<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' " +
+                "xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='{x:Type ScrollBar}'>" +
+                "<Setter Property='Width' Value='8'/>" +
+                "<Setter Property='Background' Value='Transparent'/>" +
+                "<Setter Property='Template'><Setter.Value>" +
+                "<ControlTemplate TargetType='{x:Type ScrollBar}'>" +
+                "<Grid Width='8' HorizontalAlignment='Right' Background='Transparent'>" +
+                "<Track x:Name='PART_Track' Focusable='False' IsDirectionReversed='True' " +
+                "Minimum='{TemplateBinding Minimum}' Maximum='{TemplateBinding Maximum}' " +
+                "Value='{TemplateBinding Value}' ViewportSize='{TemplateBinding ViewportSize}'>" +
+                "<Track.DecreaseRepeatButton><RepeatButton Command='{x:Static ScrollBar.PageUpCommand}' Focusable='False'>" +
+                "<RepeatButton.Template><ControlTemplate TargetType='{x:Type RepeatButton}'><Border Background='Transparent'/></ControlTemplate></RepeatButton.Template>" +
+                "</RepeatButton></Track.DecreaseRepeatButton>" +
+                "<Track.Thumb><Thumb Width='4' MinHeight='28' Focusable='False'>" +
+                "<Thumb.Template><ControlTemplate TargetType='{x:Type Thumb}'>" +
+                "<Border x:Name='thumb' Width='4' CornerRadius='2' Background='{DynamicResource LocalPass.Muted}' Opacity='.48'/>" +
+                "<ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'>" +
+                "<Setter TargetName='thumb' Property='Opacity' Value='.82'/>" +
+                "</Trigger></ControlTemplate.Triggers>" +
+                "</ControlTemplate></Thumb.Template>" +
+                "</Thumb></Track.Thumb>" +
+                "<Track.IncreaseRepeatButton><RepeatButton Command='{x:Static ScrollBar.PageDownCommand}' Focusable='False'>" +
+                "<RepeatButton.Template><ControlTemplate TargetType='{x:Type RepeatButton}'><Border Background='Transparent'/></ControlTemplate></RepeatButton.Template>" +
+                "</RepeatButton></Track.IncreaseRepeatButton>" +
+                "</Track></Grid></ControlTemplate>" +
+                "</Setter.Value></Setter></Style>";
+            return (Style)XamlReader.Parse(xaml);
         }
 
         private static Style ButtonBaseStyle(Type type, double radius)

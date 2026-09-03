@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-macos-best-effort-clear"
+description = "Enables the set_macos_best_effort_clear command without any pre-configured scope."
+commands.allow = ["set_macos_best_effort_clear"]
+
+[[permission]]
+identifier = "deny-set-macos-best-effort-clear"
+description = "Denies the set_macos_best_effort_clear command without any pre-configured scope."
+commands.deny = ["set_macos_best_effort_clear"]

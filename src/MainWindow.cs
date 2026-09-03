@@ -9,7 +9,6 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Threading;
 using System.Threading;
 
@@ -40,7 +39,9 @@ namespace LocalPass
         private readonly Border _shell;
         private readonly StackPanel _body;
         private readonly Grid _header;
+        private TextBlock _title;
         private StackPanel _headerButtons;
+        private Button _collapsedExpand;
         private TextBlock _collapsedHint;
         private readonly Slider _length;
         private readonly TextBox _lengthValue;
@@ -62,12 +63,14 @@ namespace LocalPass
         private readonly StackPanel _resultsPanel;
         private readonly TextBlock _status;
         private readonly Popup _infoPopup;
+        private readonly Border _infoPane;
         private readonly TextBlock _clipboardSecondsText;
         private readonly Button _clipMinus;
         private readonly Button _clipPlus;
+        private readonly Slider _collapsedOpacity;
+        private readonly TextBlock _collapsedOpacityText;
         private readonly DispatcherTimer _clipboardTimer;
         private readonly DispatcherTimer _statusHideTimer;
-        private readonly DispatcherTimer _rollTimer;
         private readonly Stopwatch _clipboardAge;
         private readonly List<PasswordRow> _rows;
 
@@ -77,13 +80,14 @@ namespace LocalPass
         private bool _pendingClose;
         private bool _allowClose;
         private bool _rolledUp;
+        private int _focusEpoch;
         private int _clipboardSeconds = 30;
 
         internal MainWindow()
         {
             Resources.MergedDictionaries.Add(Theme.Resources);
             Title = "LocalPass";
-            Width = 420;
+            Width = 400;
             SizeToContent = SizeToContent.Height;
             MaxHeight = Math.Max(300, SystemParameters.WorkArea.Height - 20);
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
@@ -106,8 +110,8 @@ namespace LocalPass
             _clipboardAge = new Stopwatch();
 
             _shell = new Border();
-            _shell.Margin = new Thickness(10);
-            _shell.Padding = new Thickness(16, 12, 16, 14);
+            _shell.Margin = new Thickness(0);
+            _shell.Padding = new Thickness(16, 7, 16, 14);
             _shell.CornerRadius = new CornerRadius(12);
             _shell.BorderThickness = new Thickness(1);
             if (Theme.HighContrast)
@@ -119,13 +123,6 @@ namespace LocalPass
             {
                 _shell.SetResourceReference(Border.BackgroundProperty, Theme.ShellKey);
                 _shell.SetResourceReference(Border.BorderBrushProperty, Theme.ShellEdgeKey);
-                _shell.Effect = new DropShadowEffect
-                {
-                    BlurRadius = 30,
-                    ShadowDepth = 8,
-                    Opacity = 0.45,
-                    Color = Colors.Black
-                };
             }
 
             StackPanel content = new StackPanel();
@@ -145,17 +142,18 @@ namespace LocalPass
 
             Grid settings = new Grid();
             settings.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            settings.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
+            settings.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
             settings.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             settings.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            settings.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
+            settings.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
 
             TextBlock lengthLabel = Label("LENGTH");
+            lengthLabel.Margin = new Thickness(0, 0, 8, 0);
             lengthLabel.VerticalAlignment = VerticalAlignment.Center;
             settings.Children.Add(lengthLabel);
 
             _lengthValue = NumberInput("20", "Password length, 4 to 64");
-            _lengthValue.Margin = new Thickness(10, 0, 0, 0);
+            _lengthValue.Margin = new Thickness(0);
             Grid.SetColumn(_lengthValue, 1);
             settings.Children.Add(_lengthValue);
 
@@ -167,19 +165,20 @@ namespace LocalPass
             _length.IsSnapToTickEnabled = true;
             _length.IsMoveToPointEnabled = true;
             _length.Height = 26;
-            _length.Margin = new Thickness(10, 0, 10, 0);
+            _length.Margin = new Thickness(8, 0, 8, 0);
             AutomationProperties.SetName(_length, "Password length slider");
             Apply(_length, Styles.SliderStyle());
             Grid.SetColumn(_length, 2);
             settings.Children.Add(_length);
 
             TextBlock countLabel = Label("COUNT");
+            countLabel.Margin = new Thickness(0, 0, 8, 0);
             countLabel.VerticalAlignment = VerticalAlignment.Center;
             Grid.SetColumn(countLabel, 3);
             settings.Children.Add(countLabel);
 
             _count = NumberInput("3", "Number of passwords, 1 to 99");
-            _count.Margin = new Thickness(10, 0, 0, 0);
+            _count.Margin = new Thickness(0);
             Grid.SetColumn(_count, 4);
             settings.Children.Add(_count);
             _body.Children.Add(settings);
@@ -247,10 +246,12 @@ namespace LocalPass
             _resultsHost.Children.Add(Divider());
 
             _resultsPanel = new StackPanel();
+            _resultsPanel.Margin = new Thickness(0, 0, 8, 0);
             _resultsScroller = new ScrollViewer();
             _resultsScroller.Content = _resultsPanel;
-            _resultsScroller.Margin = new Thickness(0, 10, -12, 0);
-            _resultsScroller.Resources[typeof(ScrollBar)] = Styles.ThinScrollBar;
+            _resultsScroller.Margin = new Thickness(0, 10, 0, 0);
+            if (!Theme.HighContrast)
+                _resultsScroller.Resources[typeof(ScrollBar)] = Styles.ThinScrollBar;
             _resultsScroller.MaxHeight = 350;
             _resultsScroller.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
             _resultsScroller.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
@@ -270,18 +271,23 @@ namespace LocalPass
 
             _infoPopup = new Popup();
             _infoPopup.PlacementTarget = _shell;
-            _infoPopup.Placement = PlacementMode.Right;
-            _infoPopup.HorizontalOffset = 14;
+            _infoPopup.Placement = PlacementMode.Custom;
+            _infoPopup.HorizontalOffset = 0;
             _infoPopup.VerticalOffset = 0;
             _infoPopup.AllowsTransparency = true;
             _infoPopup.StaysOpen = false;
-            _infoPopup.Child = BuildInfoPane(out _clipboardSecondsText, out _clipMinus, out _clipPlus);
+            _infoPopup.CustomPopupPlacementCallback = PlaceInfoPopup;
+            _infoPane = BuildInfoPane(
+                out _clipboardSecondsText,
+                out _clipMinus,
+                out _clipPlus,
+                out _collapsedOpacity,
+                out _collapsedOpacityText);
+            _infoPopup.Child = _infoPane;
 
             _clipboardTimer = new DispatcherTimer(DispatcherPriority.Normal);
             _clipboardTimer.Interval = TimeSpan.FromMilliseconds(250);
             _statusHideTimer = new DispatcherTimer(DispatcherPriority.Background);
-            _rollTimer = new DispatcherTimer(DispatcherPriority.Background);
-            _rollTimer.Interval = TimeSpan.FromMilliseconds(450);
 
             WireEvents();
         }
@@ -292,11 +298,13 @@ namespace LocalPass
             header.Height = 24;
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             header.MouseLeftButtonDown += DragHeader;
 
             TextBlock title = Text("L O C A L P A S S", 12, FontWeights.SemiBold, InkBrush());
             title.VerticalAlignment = VerticalAlignment.Center;
             header.Children.Add(title);
+            _title = title;
 
             _headerButtons = new StackPanel();
             _headerButtons.Orientation = Orientation.Horizontal;
@@ -334,17 +342,40 @@ namespace LocalPass
                 _theme.Visibility = Visibility.Collapsed;
             _headerButtons.Children.Add(_theme);
             _close = IconButton("\u2715", "Close and clear");
-            _headerButtons.Children.Add(_close);
+            Grid.SetColumn(_close, 2);
+            header.Children.Add(_close);
 
+            _collapsedExpand = new Button();
+            _collapsedExpand.Height = 24;
+            _collapsedExpand.Padding = new Thickness(0);
+            _collapsedExpand.Margin = new Thickness(0, 0, 8, 0);
+            _collapsedExpand.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+            _collapsedExpand.Visibility = Visibility.Collapsed;
+            AutomationProperties.SetName(_collapsedExpand, "Expand LocalPass");
+            Apply(_collapsedExpand, Styles.IconButton);
+            _collapsedExpand.Background = Brushes.Transparent;
+            Grid collapsedContent = new Grid();
+            collapsedContent.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            collapsedContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            TextBlock collapsedTitle = Text(_title.Text, 12, FontWeights.SemiBold, InkBrush());
+            collapsedTitle.VerticalAlignment = VerticalAlignment.Center;
+            collapsedContent.Children.Add(collapsedTitle);
             _collapsedHint = Label("CLICK TO EXPAND");
             _collapsedHint.VerticalAlignment = VerticalAlignment.Center;
-            _collapsedHint.Visibility = Visibility.Collapsed;
             Grid.SetColumn(_collapsedHint, 1);
-            header.Children.Add(_collapsedHint);
+            collapsedContent.Children.Add(_collapsedHint);
+            _collapsedExpand.Content = collapsedContent;
+            Grid.SetColumnSpan(_collapsedExpand, 2);
+            header.Children.Add(_collapsedExpand);
             return header;
         }
 
-        private Border BuildInfoPane(out TextBlock secondsText, out Button minus, out Button plus)
+        private Border BuildInfoPane(
+            out TextBlock secondsText,
+            out Button minus,
+            out Button plus,
+            out Slider collapsedOpacity,
+            out TextBlock collapsedOpacityText)
         {
             Border pane = new Border();
             pane.Width = 320;
@@ -353,7 +384,6 @@ namespace LocalPass
             pane.BorderThickness = new Thickness(1);
             pane.SetResourceReference(Border.BackgroundProperty, Theme.InfoShellKey);
             pane.SetResourceReference(Border.BorderBrushProperty, Theme.ShellEdgeKey);
-            pane.Effect = new DropShadowEffect { BlurRadius = 40, ShadowDepth = 16, Opacity = 0.45, Color = Colors.Black };
 
             StackPanel content = new StackPanel();
             pane.Child = content;
@@ -372,6 +402,7 @@ namespace LocalPass
             Grid.SetColumn(close, 1);
             heading.Children.Add(close);
             content.Children.Add(heading);
+            WireInfoDrag(heading, pane);
 
             Border divider = Divider();
             divider.Margin = new Thickness(0, 10, 0, 10);
@@ -425,6 +456,36 @@ namespace LocalPass
             Grid.SetColumn(plus, 5);
             timer.Children.Add(plus);
             content.Children.Add(timer);
+
+            Grid opacity = new Grid();
+            opacity.Margin = new Thickness(0, 10, 0, 0);
+            opacity.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            opacity.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            opacity.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(42) });
+            TextBlock opacityLabel = Text("Collapsed opacity", 11, FontWeights.SemiBold, InkBrush());
+            opacityLabel.VerticalAlignment = VerticalAlignment.Center;
+            opacity.Children.Add(opacityLabel);
+            collapsedOpacity = new Slider();
+            collapsedOpacity.Minimum = 25;
+            collapsedOpacity.Maximum = 75;
+            collapsedOpacity.Value = 50;
+            collapsedOpacity.TickFrequency = 5;
+            collapsedOpacity.IsSnapToTickEnabled = true;
+            collapsedOpacity.IsMoveToPointEnabled = true;
+            collapsedOpacity.Height = 22;
+            collapsedOpacity.Margin = new Thickness(8, 0, 8, 0);
+            collapsedOpacity.IsEnabled = !Theme.HighContrast;
+            AutomationProperties.SetName(collapsedOpacity, "Collapsed rail opacity, 25 to 75 percent");
+            Apply(collapsedOpacity, Styles.SliderStyle());
+            Grid.SetColumn(collapsedOpacity, 1);
+            opacity.Children.Add(collapsedOpacity);
+            collapsedOpacityText = Text("50%", 11.5, FontWeights.Normal, InkBrush());
+            collapsedOpacityText.FontFamily = Theme.MonoFont;
+            collapsedOpacityText.TextAlignment = TextAlignment.Right;
+            collapsedOpacityText.VerticalAlignment = VerticalAlignment.Center;
+            Grid.SetColumn(collapsedOpacityText, 2);
+            opacity.Children.Add(collapsedOpacityText);
+            content.Children.Add(opacity);
             return pane;
         }
 
@@ -452,6 +513,7 @@ namespace LocalPass
             option.FontFamily = Theme.MonoFont;
             option.FontSize = 11.5;
             option.Padding = new Thickness(0);
+            option.ToolTip = accessibleName;
             AutomationProperties.SetName(option, accessibleName);
             Apply(option, Styles.SegmentToggle);
             Grid.SetColumn(option, column);
@@ -476,7 +538,7 @@ namespace LocalPass
         {
             TextBox input = new TextBox();
             input.Text = value;
-            input.Width = 34;
+            input.Width = 40;
             input.Height = 26;
             input.MaxLength = 2;
             input.FontFamily = Theme.MonoFont;

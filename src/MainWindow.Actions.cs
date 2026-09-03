@@ -25,64 +25,37 @@ namespace LocalPass
             Loaded += delegate
             {
                 _active = true;
-                _shell.Opacity = 1;
+                UpdateSurfaceOpacity();
                 RefreshRows();
             };
             Activated += delegate
             {
                 _active = true;
-                _rollTimer.Stop();
-                Unroll();
-                _shell.Opacity = 1;
+                _focusEpoch++;
+                UpdateSurfaceOpacity();
                 RefreshRows();
             };
             Deactivated += delegate
             {
                 _active = false;
                 RefreshRows(false);
-                if (_infoPopup.IsOpen)
-                    return;
-                if (IsMouseOver)
-                {
-                    _rollTimer.Stop();
-                    Unroll();
-                    if (!Theme.HighContrast)
-                        _shell.Opacity = 0.80;
-                }
-                else
-                {
-                    ScheduleRollUp();
-                    if (!Theme.HighContrast)
-                        _shell.Opacity = 0.50;
-                }
+                UpdateSurfaceOpacity();
+                QueueOutsideCollapse();
             };
-            MouseEnter += delegate
+            MouseEnter += delegate { UpdateSurfaceOpacity(); };
+            MouseLeave += delegate { UpdateSurfaceOpacity(); };
+            _infoPane.MouseEnter += delegate { UpdateSurfaceOpacity(); };
+            _infoPane.MouseLeave += delegate { UpdateSurfaceOpacity(); };
+            _infoPopup.Opened += delegate
             {
-                _rollTimer.Stop();
-                Unroll();
-                if (!_active && !Theme.HighContrast)
-                    _shell.Opacity = 0.80;
+                _focusEpoch++;
+                UpdateSurfaceOpacity();
             };
-            MouseLeave += delegate
-            {
-                if (!_active && !_infoPopup.IsOpen)
-                {
-                    ScheduleRollUp();
-                    if (!Theme.HighContrast)
-                        _shell.Opacity = 0.50;
-                }
-            };
-            _infoPopup.Opened += delegate { _rollTimer.Stop(); };
             _infoPopup.Closed += delegate
             {
-                if (!_active && !IsMouseOver)
-                    ScheduleRollUp();
-            };
-            _rollTimer.Tick += delegate
-            {
-                _rollTimer.Stop();
-                if (!_active && !IsMouseOver && !_infoPopup.IsOpen && !_pendingClose)
-                    RollUp();
+                UpdateSurfaceOpacity();
+                if (!_active)
+                    QueueOutsideCollapse();
             };
             _length.ValueChanged += delegate { _lengthValue.Text = ((int)_length.Value).ToString(); };
             _lengthValue.PreviewTextInput += NumericPreviewTextInput;
@@ -97,15 +70,35 @@ namespace LocalPass
 
             _generate.Click += delegate { GeneratePasswords(); };
             _clear.Click += delegate { ClearAll(); };
-            _infoButton.Click += delegate { _infoPopup.IsOpen = !_infoPopup.IsOpen; };
+            _infoButton.Click += delegate
+            {
+                if (_infoPopup.IsOpen)
+                    _infoPopup.IsOpen = false;
+                else
+                {
+                    ResetInfoPlacement();
+                    _infoPopup.IsOpen = true;
+                }
+            };
             _theme.Click += delegate { ToggleTheme(); };
             _close.Click += delegate { Close(); };
+            _collapsedExpand.Click += delegate
+            {
+                Activate();
+                Unroll();
+                UpdateSurfaceOpacity();
+            };
             _mask.Checked += delegate { SetMask(true); };
             _mask.Unchecked += delegate { SetMask(false); };
             _pin.Checked += delegate { Topmost = true; };
             _pin.Unchecked += delegate { Topmost = false; };
             _clipMinus.Click += delegate { ChangeClipboardSeconds(-5); };
             _clipPlus.Click += delegate { ChangeClipboardSeconds(5); };
+            _collapsedOpacity.ValueChanged += delegate
+            {
+                _collapsedOpacityText.Text = ((int)_collapsedOpacity.Value) + "%";
+                UpdateSurfaceOpacity();
+            };
 
             _clipboardTimer.Tick += ClipboardTick;
             _statusHideTimer.Tick += delegate
@@ -176,7 +169,7 @@ namespace LocalPass
             layout.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             container.Child = layout;
 
-            TextBlock index = Text(number.ToString("00"), 10.5, FontWeights.Normal, MutedBrush());
+            TextBlock index = Text(number.ToString("00"), 10.5, FontWeights.SemiBold, MutedBrush());
             index.SetResourceReference(TextBlock.ForegroundProperty, Theme.RowIndexKey);
             index.FontFamily = Theme.MonoFont;
             index.TextAlignment = TextAlignment.Right;
@@ -184,20 +177,13 @@ namespace LocalPass
             index.Margin = new Thickness(0, 0, 8, 0);
             layout.Children.Add(index);
 
-            TextBlock display = Text("", PasswordFontSize(secret.Length), FontWeights.Normal, InkBrush());
+            TextBlock display = Text("", 11, FontWeights.Normal, InkBrush());
             display.FontFamily = Theme.MonoFont;
             display.VerticalAlignment = VerticalAlignment.Center;
             display.Margin = new Thickness(0, 0, 8, 0);
             display.Cursor = Cursors.Hand;
-            if (PasswordFontSize(secret.Length) < 9)
-            {
-                display.FontSize = 11;
-                display.TextWrapping = TextWrapping.Wrap;
-            }
-            else
-            {
-                display.TextWrapping = TextWrapping.NoWrap;
-            }
+            display.TextWrapping = TextWrapping.NoWrap;
+            display.TextTrimming = TextTrimming.CharacterEllipsis;
             PasswordRow captured = row;
             display.MouseLeftButtonDown += delegate
             {
@@ -214,7 +200,8 @@ namespace LocalPass
             Button copy = new Button();
             copy.Content = "COPY";
             copy.Height = 24;
-            copy.MinWidth = 52;
+            copy.Width = 52;
+            copy.Margin = new Thickness(6, 0, 0, 0);
             copy.FontSize = 10;
             AutomationProperties.SetName(copy, "Copy password " + number);
             Apply(copy, Styles.GhostButton);
@@ -225,11 +212,6 @@ namespace LocalPass
 
             _rows.Add(row);
             _resultsPanel.Children.Add(container);
-        }
-
-        private static double PasswordFontSize(int length)
-        {
-            return Math.Min(12, (280.0 / length - 0.6) / 0.62);
         }
 
         private void CopyPassword(PasswordRow row)
@@ -397,17 +379,10 @@ namespace LocalPass
 
             Theme.Apply(!Theme.IsLight);
             _length.Style = Styles.SliderStyle();
+            _collapsedOpacity.Style = Styles.SliderStyle();
             _theme.Content = Theme.IsLight ? "◑" : "◐";
             _theme.ToolTip = Theme.IsLight ? "Switch to dark theme" : "Switch to light theme";
             InvalidateVisual();
-        }
-
-        private void ScheduleRollUp()
-        {
-            if (Theme.HighContrast || _infoPopup.IsOpen || _pendingClose)
-                return;
-            _rollTimer.Stop();
-            _rollTimer.Start();
         }
 
         private void RollUp()
@@ -417,25 +392,108 @@ namespace LocalPass
             RefreshRows(false);
             _rolledUp = true;
             _body.Visibility = Visibility.Collapsed;
+            _title.Visibility = Visibility.Collapsed;
             _headerButtons.Visibility = Visibility.Collapsed;
-            _collapsedHint.Visibility = Visibility.Visible;
-            _shell.Padding = new Thickness(16, 8, 16, 8);
-            _shell.SetResourceReference(Border.BackgroundProperty, Theme.RolledShellKey);
-            _shell.Opacity = 0.50;
+            _collapsedExpand.Visibility = Visibility.Visible;
+            _shell.Padding = new Thickness(16, 7, 16, 7);
+            _shell.SetResourceReference(Border.BackgroundProperty, Theme.ShellKey);
+            UpdateSurfaceOpacity();
         }
 
         private void Unroll()
         {
-            _rollTimer.Stop();
             if (!_rolledUp)
                 return;
             _rolledUp = false;
-            _shell.Padding = new Thickness(16, 12, 16, 14);
+            _shell.Padding = new Thickness(16, 7, 16, 14);
             _shell.SetResourceReference(Border.BackgroundProperty, Theme.ShellKey);
-            _body.Visibility = Visibility.Visible;
+            _title.Visibility = Visibility.Visible;
             _headerButtons.Visibility = Visibility.Visible;
-            _collapsedHint.Visibility = Visibility.Collapsed;
+            _collapsedExpand.Visibility = Visibility.Collapsed;
+            _body.Visibility = Visibility.Visible;
             RefreshRows();
+        }
+
+        private void UpdateSurfaceOpacity()
+        {
+            double inactiveOpacity = IsMouseOver || _infoPane.IsMouseOver ? 0.95 : 0.85;
+            _shell.Opacity = !Theme.HighContrast && _rolledUp
+                ? _collapsedOpacity.Value / 100.0
+                : !Theme.HighContrast && !_active ? inactiveOpacity : 1;
+            _infoPane.Opacity = !Theme.HighContrast && !_active ? inactiveOpacity : 1;
+        }
+
+        private void QueueOutsideCollapse()
+        {
+            int epoch = ++_focusEpoch;
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(delegate
+            {
+                if (epoch != _focusEpoch || _active || _infoPopup.IsOpen || _pendingClose)
+                    return;
+                RollUp();
+                UpdateSurfaceOpacity();
+            }));
+        }
+
+        private CustomPopupPlacement[] PlaceInfoPopup(Size popupSize, Size targetSize, Point offset)
+        {
+            const double gap = 14;
+            return new CustomPopupPlacement[]
+            {
+                new CustomPopupPlacement(new Point(targetSize.Width + gap, 0), PopupPrimaryAxis.Horizontal),
+                new CustomPopupPlacement(new Point(-popupSize.Width - gap, 0), PopupPrimaryAxis.Horizontal),
+                new CustomPopupPlacement(new Point(0, targetSize.Height + gap), PopupPrimaryAxis.Vertical),
+                new CustomPopupPlacement(new Point(0, -popupSize.Height - gap), PopupPrimaryAxis.Vertical)
+            };
+        }
+
+        private void ResetInfoPlacement()
+        {
+            _infoPopup.Placement = PlacementMode.Custom;
+            _infoPopup.HorizontalOffset = 0;
+            _infoPopup.VerticalOffset = 0;
+        }
+
+        private void WireInfoDrag(Grid heading, Border pane)
+        {
+            bool dragging = false;
+            Point pointerStart = new Point();
+            double horizontalStart = 0;
+            double verticalStart = 0;
+
+            heading.PreviewMouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs eventArgs)
+            {
+                if (IsButtonSource(eventArgs.OriginalSource))
+                    return;
+
+                Point popupOrigin = _shell.PointFromScreen(pane.PointToScreen(new Point(0, 0)));
+                _infoPopup.Placement = PlacementMode.RelativePoint;
+                _infoPopup.HorizontalOffset = popupOrigin.X;
+                _infoPopup.VerticalOffset = popupOrigin.Y;
+                pointerStart = Mouse.GetPosition(_shell);
+                horizontalStart = _infoPopup.HorizontalOffset;
+                verticalStart = _infoPopup.VerticalOffset;
+                dragging = pane.CaptureMouse();
+                eventArgs.Handled = dragging;
+            };
+            pane.PreviewMouseMove += delegate(object sender, MouseEventArgs eventArgs)
+            {
+                if (!dragging || eventArgs.LeftButton != MouseButtonState.Pressed)
+                    return;
+                Point current = Mouse.GetPosition(_shell);
+                _infoPopup.HorizontalOffset = horizontalStart + current.X - pointerStart.X;
+                _infoPopup.VerticalOffset = verticalStart + current.Y - pointerStart.Y;
+                eventArgs.Handled = true;
+            };
+            pane.PreviewMouseLeftButtonUp += delegate(object sender, MouseButtonEventArgs eventArgs)
+            {
+                if (!dragging)
+                    return;
+                dragging = false;
+                pane.ReleaseMouseCapture();
+                eventArgs.Handled = true;
+            };
+            pane.LostMouseCapture += delegate { dragging = false; };
         }
         private void ChangeClipboardSeconds(int change)
         {
@@ -560,20 +618,8 @@ namespace LocalPass
 
         private void DragHeader(object sender, MouseButtonEventArgs eventArgs)
         {
-            if (_rolledUp)
-            {
-                Unroll();
-                eventArgs.Handled = true;
+            if (_rolledUp || IsButtonSource(eventArgs.OriginalSource))
                 return;
-            }
-
-            DependencyObject source = eventArgs.OriginalSource as DependencyObject;
-            while (source != null)
-            {
-                if (source is ButtonBase)
-                    return;
-                source = VisualTreeHelper.GetParent(source);
-            }
 
             if (eventArgs.LeftButton == MouseButtonState.Pressed)
             {
@@ -582,10 +628,21 @@ namespace LocalPass
             }
         }
 
+        private static bool IsButtonSource(object originalSource)
+        {
+            DependencyObject source = originalSource as DependencyObject;
+            while (source != null)
+            {
+                if (source is ButtonBase)
+                    return true;
+                source = VisualTreeHelper.GetParent(source);
+            }
+            return false;
+        }
+
         private void WindowClosing(object sender, CancelEventArgs eventArgs)
         {
             _infoPopup.IsOpen = false;
-            _rollTimer.Stop();
             RefreshRows(false);
             DropRows();
 
@@ -606,7 +663,6 @@ namespace LocalPass
         internal void OnSessionEnding(object sender, SessionEndingCancelEventArgs eventArgs)
         {
             _infoPopup.IsOpen = false;
-            _rollTimer.Stop();
             RefreshRows(false);
             DropRows();
             if (_clipboard != null)

@@ -12,7 +12,8 @@ Compact, local-only Windows password generator. Double-click
 - Use **?** to change the clipboard release timer from 5 to 60 seconds.
 - Press **CLEAR** to remove generated values and release clipboard content owned by LocalPass.
 - **✕** closes LocalPass and releases clipboard content it still owns.
-- When inactive and not hovered, widget rolls up automatically; hover or focus expands it.
+- Clicking outside LocalPass collapses it immediately. Hover never expands it.
+- Click the collapsed bar, or focus it and press `Enter`/`Space`, to expand. Its separate **✕** closes safely while collapsed.
 - Additional launches exit while one LocalPass instance is already running.
 
 Shortcuts: `Ctrl+G` generates; `Ctrl+L` clears. Close the app with `Alt+F4`
@@ -20,10 +21,11 @@ or its taskbar command.
 
 ## Appearance
 
-- Compact 400px frosted-glass widget with dark and light themes.
-- Results fit long passwords to the available row width, then wrap when needed.
-- The About pane opens to the right with control help and clipboard timing.
-- Windows High Contrast disables transparency.
+- Compact 400px frosted-glass widget with 90% expanded surfaces in dark and light themes. Expanded and About shells are fully visible while focused, 95% while inactive-hovered, and 85% while inactive-idle. About controls collapsed opacity from 25–75% in 5% steps; the session-only default is 50%.
+- Main, About, and collapsed surfaces are shadow-free; the collapsed rail is 40px tall.
+- Results use a fixed 11px monospace size, stay on one line, and ellipsize before the **COPY** gutter. **COPY** always uses the complete password.
+- The movable About pane opens 14px to the right, left, below, or above as screen space permits.
+- Windows High Contrast uses opaque system colors and never auto-collapses.
 
 Theme and window choices are session-only. Nothing is saved.
 

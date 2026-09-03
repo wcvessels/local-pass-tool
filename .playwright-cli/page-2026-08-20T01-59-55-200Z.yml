@@ -1,0 +1,7 @@
+- main "LOCALPASS" [ref=e2]:
+  - region "LocalPass password generator" [ref=e3]:
+    - generic [ref=e35]:
+      - button "Expand LocalPass" [ref=e36] [cursor=pointer]:
+        - generic [ref=e37]: LOCALPASS
+        - generic [ref=e38]: CLICK TO EXPAND
+      - button "Close LocalPass" [ref=e39] [cursor=pointer]: ✕
