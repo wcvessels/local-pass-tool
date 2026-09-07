@@ -1,7 +1,12 @@
 artifacts/
 node_modules/
+dist/
 dist-ui/
 src-tauri/target/
 src-tauri/gen/
 *.tsbuildinfo
 .playwright-cli/
+_SESSION_NOTES_*.md
+.claude/
+.codex/
+.agents/
