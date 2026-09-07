@@ -990,13 +990,13 @@ button[data-pending="true"],
   .switch-input::before { display: none; }
 
   .warning-copy,
-  .status:not([hidden]) {
+  .status:not([hidden]):not(.sr-only) {
     border: 1px solid Highlight;
     background: Canvas;
     color: CanvasText;
   }
 
-  .status:not([hidden]) { padding: 0.25rem; }
+  .status:not([hidden]):not(.sr-only) { padding: 0.25rem; }
 
   *,
   *::before,

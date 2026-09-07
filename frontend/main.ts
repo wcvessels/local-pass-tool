@@ -63,11 +63,12 @@ function isCode(error: unknown, code: string): boolean {
   return commandCode(error).toLowerCase().includes(code.toLowerCase());
 }
 
-function setStatus(element: HTMLElement, message: string, tone: Tone = "neutral", timeout = 0): void {
+function setStatus(element: HTMLElement, message: string, tone: Tone = "neutral", timeout = 0, announceOnly = false): void {
   const activeTimer = statusTimers.get(element);
   if (activeTimer !== undefined) window.clearTimeout(activeTimer);
   element.textContent = message;
   element.dataset.tone = tone;
+  element.classList.toggle("sr-only", announceOnly);
   element.hidden = message.length === 0;
   if (timeout > 0) {
     const timer = window.setTimeout(() => {
@@ -1030,12 +1031,12 @@ async function startAbout(): Promise<void> {
     if (percent === state.collapsedOpacity) return;
     state.opacityPending = true;
     renderOpacity(percent);
-    setStatus(statusElement, "Changing collapsed opacity\u2026");
+    setStatus(statusElement, "Changing collapsed opacity\u2026", "neutral", 0, true);
     try {
       const accepted = await invoke<number>("set_collapsed_opacity", { percent });
       if (!validCollapsedOpacity(accepted)) throw new Error("invalid_collapsed_opacity");
       state.collapsedOpacity = accepted;
-      setStatus(statusElement, "Collapsed opacity set to " + accepted + "% for this session.", "success", 2600);
+      setStatus(statusElement, "Collapsed opacity set to " + accepted + "% for this session.", "success", 2600, true);
     } catch {
       setStatus(statusElement, "Collapsed opacity could not be changed. Try again.", "error");
     } finally {
@@ -1097,7 +1098,7 @@ async function startAbout(): Promise<void> {
       if (!parsed) throw new Error("invalid_status");
       state.clipboardStatus = parsed;
       renderSettings();
-      setStatus(statusElement, "Clipboard release timer set to " + seconds + " seconds.", "success", 2600);
+      setStatus(statusElement, "Clipboard release timer set to " + seconds + " seconds.", "success", 2600, true);
     } catch {
       setStatus(statusElement, "Clipboard release timer could not be changed.", "error");
     } finally {

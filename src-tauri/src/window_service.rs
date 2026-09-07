@@ -167,6 +167,14 @@ pub fn start_window_drag(window: &WebviewWindow) -> Result<(), WindowServiceErro
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
+pub fn is_foreground_window(window: &WebviewWindow) -> bool {
+    window.hwnd().is_ok_and(|handle| {
+        // SAFETY: this query has no pointer arguments or ownership requirements.
+        unsafe { windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow() == handle.0 }
+    })
+}
+
 pub fn place_about(
     main: &WebviewWindow,
     about: &WebviewWindow,
