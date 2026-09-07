@@ -26,6 +26,7 @@ The initial entries normalize decisions made during the 2026-07-12 LocalPass UI 
 | [LP-009](#lp-009--preserve-the-verified-password-generation-contract) | 2026-07-12 | Accepted | Security | Preserve the verified generator contract |
 | [LP-010](#lp-010--use-platform-specific-clipboard-policies) | 2026-07-12 | Accepted | Clipboard | Use explicit Windows, macOS, X11, and Wayland policies |
 | [LP-011](#lp-011--checkpoint-and-plan-before-rewriting) | 2026-07-12 | Accepted | Delivery | Preserve a validated baseline and plan before scaffolding |
+| [LP-012](#lp-012--route-security-reports-privately-once-the-repo-is-public) | 2026-09-07 | Blocked | Delivery | Route security reports through GitHub private vulnerability reporting once the repo is public |
 
 ## Decisions
 
@@ -150,6 +151,19 @@ The initial entries normalize decisions made during the 2026-07-12 LocalPass UI 
 - **Consequences:** The checkpoint is provenance, not the active migration branch. Architecture gates precede implementation, and WPF is not deleted during migration.
 - **Current disposition:** Completed. WPF checkpoint: branch `codex/wpf-checkpoint`, commit `e048926`. Architecture gate later returned GO; migration proceeded on `codex/tauri-migration`.
 - **Evidence:** [Migration preservation rule](TAURI_MIGRATION_PLAN.md#preservation-rule), [session handoff](../_SESSION_NOTES_2026-07-12_1744_random-password-generator-utility.md)
+
+### LP-012 — Route security reports privately once the repo is public
+
+- **Status:** Blocked
+- **Area:** Delivery
+- **Context:** The README review on 2026-09-07 found that the Feedback section sends security concerns to the public issue tracker, and the repository has no `SECURITY.md` or private reporting path. GitHub private vulnerability reporting was attempted the same day and returned 404 because the repository is private; GitHub offers the feature only on public repositories.
+- **Decision:** When the repository becomes public, enable GitHub private vulnerability reporting and change the README Feedback section to send security concerns to the Security tab's "Report a vulnerability" path. Bug reports and platform test results stay on issues.
+- **Rationale:** With no release and a private repository, public issues expose nothing. Once the repository and a release are public, a public issue describing a clipboard or generator defect is a working exploit note for the window before the fix. The feature costs one API call and signals a maintained security posture to the IAM and secrets-management readers the README targets.
+- **Consequences:** Going public has a two-step checklist, not one. A `SECURITY.md` is optional; the GitHub button is sufficient.
+- **Blocked on:** Repository visibility change to public.
+- **Unblock command:** `gh api -X PUT repos/wcvessels/local-pass-tool/private-vulnerability-reporting`
+- **Current disposition:** Repository is private as of 2026-09-07. README Feedback section unchanged pending the visibility change.
+- **Evidence:** [README Feedback section](../README.md#feedback), [GitHub private vulnerability reporting docs](https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/configuring-private-vulnerability-reporting-for-a-repository)
 
 ## Open items at the close of the source session
 
