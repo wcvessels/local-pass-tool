@@ -13,7 +13,7 @@ namespace LocalPass
         internal const string Uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         internal const string Numbers = "0123456789";
         internal const string Symbols = "!@#$%^&*_-+=?";
-        private const string Ambiguous = "O0Il1|";
+        private const string Ambiguous = "Il1O0o5S8B";
         private static readonly RandomNumberGenerator Rng = RandomNumberGenerator.Create();
 
         internal static IList<string> GenerateMany(
@@ -25,23 +25,12 @@ namespace LocalPass
             bool symbols,
             bool excludeAmbiguous)
         {
-            if (count < 1 || count > 50)
-                throw new ArgumentOutOfRangeException("count", "Count must be between 1 and 50.");
+            if (count < 1 || count > 99)
+                throw new ArgumentOutOfRangeException("count", "Count must be between 1 and 99.");
 
             List<string> results = new List<string>(count);
-            HashSet<string> unique = new HashSet<string>(StringComparer.Ordinal);
-            int attempts = 0;
-
-            while (results.Count < count)
-            {
-                string password = Generate(length, lowercase, uppercase, numbers, symbols, excludeAmbiguous);
-                if (unique.Add(password))
-                    results.Add(password);
-
-                attempts++;
-                if (attempts > count * 100)
-                    throw new InvalidOperationException("Could not produce a unique password batch.");
-            }
+            for (int i = 0; i < count; i++)
+                results.Add(Generate(length, lowercase, uppercase, numbers, symbols, excludeAmbiguous));
 
             return results;
         }
@@ -54,8 +43,8 @@ namespace LocalPass
             bool symbols,
             bool excludeAmbiguous)
         {
-            if (length < 8 || length > 64)
-                throw new ArgumentOutOfRangeException("length", "Length must be between 8 and 64.");
+            if (length < 4 || length > 64)
+                throw new ArgumentOutOfRangeException("length", "Length must be between 4 and 64.");
 
             List<string> groups = new List<string>(4);
             AddGroup(groups, lowercase, Lowercase, excludeAmbiguous);
@@ -71,46 +60,29 @@ namespace LocalPass
                 poolBuilder.Append(group);
             string pool = poolBuilder.ToString();
 
-            // Rejection sampling makes every valid password equally likely.
             char[] candidate = new char[length];
             try
             {
-                for (int attempt = 0; attempt < 100000; attempt++)
-                {
-                    for (int i = 0; i < candidate.Length; i++)
-                        candidate[i] = pool[NextInt(pool.Length)];
+                int position = 0;
+                foreach (string group in groups)
+                    candidate[position++] = group[NextInt(group.Length)];
+                while (position < candidate.Length)
+                    candidate[position++] = pool[NextInt(pool.Length)];
 
-                    if (ContainsEveryGroup(candidate, groups))
-                        return new string(candidate);
+                for (int i = candidate.Length - 1; i > 0; i--)
+                {
+                    int swap = NextInt(i + 1);
+                    char value = candidate[i];
+                    candidate[i] = candidate[swap];
+                    candidate[swap] = value;
                 }
+                return new string(candidate);
             }
             finally
             {
                 Array.Clear(candidate, 0, candidate.Length);
             }
-
-            throw new InvalidOperationException("Could not satisfy the selected character policy.");
         }
-
-        private static bool ContainsEveryGroup(char[] candidate, IList<string> groups)
-        {
-            foreach (string group in groups)
-            {
-                bool found = false;
-                foreach (char character in candidate)
-                {
-                    if (group.IndexOf(character) >= 0)
-                    {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                    return false;
-            }
-            return true;
-        }
-
         private static void AddGroup(List<string> groups, bool enabled, string characters, bool excludeAmbiguous)
         {
             if (!enabled)
@@ -394,7 +366,7 @@ namespace LocalPass
                     bool upper = (mask & 2) != 0;
                     bool numbers = (mask & 4) != 0;
                     bool symbols = (mask & 8) != 0;
-                    int[] lengths = new int[] { 8, 64 };
+                    int[] lengths = new int[] { 4, 64 };
 
                     foreach (int length in lengths)
                     {
@@ -402,24 +374,23 @@ namespace LocalPass
                         {
                             string password = PasswordGenerator.Generate(length, lower, upper, numbers, symbols, true);
                             Check(password.Length == length, "Wrong length");
-                            Check(!ContainsAny(password, "O0Il1|"), "Ambiguous character generated");
-                            Check(!lower || ContainsAny(password, "abcdefghijkmnopqrstuvwxyz"), "Missing lowercase");
-                            Check(!upper || ContainsAny(password, "ABCDEFGHJKLMNPQRSTUVWXYZ"), "Missing uppercase");
-                            Check(!numbers || ContainsAny(password, "23456789"), "Missing number");
+                            Check(!ContainsAny(password, "Il1O0o5S8B"), "Look-alike character generated");
+                            Check(!lower || ContainsAny(password, "abcdefghijkmnpqrstuvwxyz"), "Missing lowercase");
+                            Check(!upper || ContainsAny(password, "ACDEFGHJKLMNPQRTUVWXYZ"), "Missing uppercase");
+                            Check(!numbers || ContainsAny(password, "234679"), "Missing number");
                             Check(!symbols || ContainsAny(password, PasswordGenerator.Symbols), "Missing symbol");
                         }
                     }
                 }
 
-                IList<string> batch = PasswordGenerator.GenerateMany(50, 20, true, true, true, true, false);
-                Check(batch.Count == 50, "Wrong batch size");
-                Check(new HashSet<string>(batch, StringComparer.Ordinal).Count == 50, "Duplicate batch item");
+                IList<string> batch = PasswordGenerator.GenerateMany(99, 20, true, true, true, true, false);
+                Check(batch.Count == 99, "Wrong batch size");
 
-                ExpectFailure(delegate { PasswordGenerator.Generate(7, true, true, true, true, true); });
+                ExpectFailure(delegate { PasswordGenerator.Generate(3, true, true, true, true, true); });
                 ExpectFailure(delegate { PasswordGenerator.Generate(65, true, true, true, true, true); });
                 ExpectFailure(delegate { PasswordGenerator.Generate(20, false, false, false, false, true); });
                 ExpectFailure(delegate { PasswordGenerator.GenerateMany(0, 20, true, true, true, true, true); });
-                ExpectFailure(delegate { PasswordGenerator.GenerateMany(51, 20, true, true, true, true, true); });
+                ExpectFailure(delegate { PasswordGenerator.GenerateMany(100, 20, true, true, true, true, true); });
 
                 Console.WriteLine("LocalPass self-test passed.");
                 return 0;

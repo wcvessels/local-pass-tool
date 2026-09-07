@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-close-about"
+description = "Enables the close_about command without any pre-configured scope."
+commands.allow = ["close_about"]
+
+[[permission]]
+identifier = "deny-close-about"
+description = "Denies the close_about command without any pre-configured scope."
+commands.deny = ["close_about"]

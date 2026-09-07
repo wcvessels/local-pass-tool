@@ -1,0 +1,20 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "localpass-main",
+  "description": "Narrow LocalPass commands for the local main window.",
+  "local": true,
+  "windows": ["main"],
+  "permissions": [
+    "allow-generate-passwords",
+    "allow-copy-password",
+    "allow-clear-sensitive-state",
+    "allow-clipboard-status",
+    "allow-set-window-view",
+    "allow-set-pointer-inside",
+    "allow-set-always-on-top",
+    "allow-start-window-drag",
+    "allow-open-about",
+    "allow-redaction-ack",
+    "allow-request-close"
+  ]
+}

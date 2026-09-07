@@ -1,0 +1,79 @@
+name: Tauri native checks
+
+on:
+  push:
+    paths:
+      - ".github/workflows/tauri-native-check.yml"
+      - "frontend/**"
+      - "src-tauri/**"
+      - "index.html"
+      - "scripts/verify-boundary.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "vite.config.ts"
+  pull_request:
+    paths:
+      - ".github/workflows/tauri-native-check.yml"
+      - "frontend/**"
+      - "src-tauri/**"
+      - "index.html"
+      - "scripts/verify-boundary.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "vite.config.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: macOS 15 ARM64
+            os: macos-15
+            target: aarch64-apple-darwin
+          - name: macOS 15 Intel x86_64
+            os: macos-15-intel
+            target: x86_64-apple-darwin
+          - name: Ubuntu 24.04 x64
+            os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install minimal stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --target ${{ matrix.target }} --no-self-update
+          rustup default stable
+      - name: Install Linux build prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - name: Install pinned npm dependencies
+        run: npm ci
+      - name: Verify local-only boundary
+        run: npm run verify:boundary
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+      - name: Run native Rust tests
+        run: cargo test --locked --target ${{ matrix.target }} --manifest-path src-tauri/Cargo.toml
+      - name: Check native Rust build
+        run: cargo check --locked --target ${{ matrix.target }} --features custom-protocol --manifest-path src-tauri/Cargo.toml
+      - name: Compile Tauri app without bundles
+        run: npm run tauri -- build --ci --no-bundle --target ${{ matrix.target }} -- --locked

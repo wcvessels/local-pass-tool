@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-collapsed-opacity"
+description = "Enables the set_collapsed_opacity command without any pre-configured scope."
+commands.allow = ["set_collapsed_opacity"]
+
+[[permission]]
+identifier = "deny-set-collapsed-opacity"
+description = "Denies the set_collapsed_opacity command without any pre-configured scope."
+commands.deny = ["set_collapsed_opacity"]

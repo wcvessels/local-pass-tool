@@ -1,1 +1,7 @@
 artifacts/
+node_modules/
+dist-ui/
+src-tauri/target/
+src-tauri/gen/
+*.tsbuildinfo
+.playwright-cli/
