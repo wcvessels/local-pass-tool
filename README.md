@@ -13,10 +13,11 @@ A password generator that keeps everything on your computer.
 </picture>
 
 LocalPass makes strong passwords, shows them in a compact floating window,
-and copies one to the clipboard when you ask. After a short timer it removes
-the password from the clipboard again. It saves nothing to disk. It never
-connects to the internet. When you close it, LocalPass wipes the passwords
-from memory.
+and copies one to the clipboard when you ask. On Windows and Linux X11 it
+removes the password from the clipboard again after a short timer; on macOS
+that is an opt-in you turn on each session. It saves nothing to disk. It
+never connects to the internet. Closing clears generated results from the
+app; clipboard cleanup follows the platform policy below.
 
 LocalPass makes passwords. It does not store them. There is no vault, no
 sync, and no account.
@@ -39,7 +40,7 @@ build.
 | Windows x64 | Built and tested by hand. Primary target. |
 | macOS (Apple Silicon and Intel) | Compiles and passes tests in CI. Not yet tested on real hardware. Not signed or notarized. |
 | Linux X11 | Compiles and passes tests in CI. Not yet tested on real hardware. |
-| Linux Wayland | Runs, but cannot auto-remove passwords from the clipboard. See [Clipboard by platform](#clipboard-by-platform). |
+| Linux Wayland | Runs and generates passwords, but COPY is unavailable: the toolkit does not expose a safe per-entry clipboard handle. See [Clipboard by platform](#clipboard-by-platform). |
 
 There are no downloadable releases yet. To use LocalPass today,
 [build it from source](#build). On macOS the build is unsigned, so
@@ -58,8 +59,9 @@ Gatekeeper will warn you when you first open it.
    the clipboard clears itself after the timer. The default is 30 seconds.
    You can set 5 to 60 seconds in the About panel. The **?** button opens
    the About panel.
-6. Press **CLEAR** to remove all passwords and clear the clipboard. **✕**
-   does the same and closes the app.
+6. Press **CLEAR** to remove all passwords from the window and release the
+   clipboard where the platform policy allows. **✕** does the same and
+   closes the app.
 
 > **macOS users, read this first.** LocalPass does not clear the clipboard
 > on macOS unless you turn clearing on, and the setting is off again every
@@ -75,7 +77,7 @@ The header has five buttons:
 | **✱** | Hides every password. Click a hidden password to show it. |
 | **◉** | Keeps the window on top of other windows. On by default. Click to let other windows cover it. |
 | **◐** | Switches between dark and light theme. |
-| **✕** | Clears the clipboard and closes the app. |
+| **✕** | Closes the app. Clears the clipboard on Windows and Linux X11. |
 
 When the window loses focus, every password hides at once, no matter what
 **✱** is set to.
@@ -131,8 +133,8 @@ office.
   that it still owns the clipboard. If you copied something else in the
   meantime, LocalPass does not change it. The one exception is the macOS
   opt-in race described under [Clipboard by platform](#clipboard-by-platform).
-- **Closing clears before it exits.** LocalPass blanks the window before it
-  closes. It then finishes clearing the clipboard even if the window is
+- **Closing is careful.** LocalPass blanks the window before it closes,
+  then finishes the platform clipboard cleanup even if the window is
   already gone.
 - **The window has a short list of allowed requests.** It cannot read files,
   run programs, open web pages, or download anything. The app has no update
@@ -176,10 +178,10 @@ the clipboard before clearing it. It never erases someone else's copy.
 can clear exactly that one. It sends the KDE "this is a password" hint and
 never asks clipboard managers to keep the value.
 
-**Linux Wayland.** The current toolkit does not give LocalPass a safe way to
-clear only its own clipboard entry. Rather than clear everything, it does
-nothing. Passwords are still generated and displayed. They stay on the
-clipboard until you copy something else.
+**Linux Wayland.** The current toolkit does not give LocalPass a way to own
+and later clear only its own clipboard entry. Rather than write something it
+cannot safely remove, COPY is disabled and reports "unsupported on this
+platform". Generate and read passwords from the window.
 
 ## Build
 
@@ -217,7 +219,7 @@ all security-sensitive work in Rust. Electron, Avalonia, and Slint were
 considered. Electron ships its own browser and is much larger. Avalonia and
 Slint would have meant redrawing the design from scratch.
 
-Full reasoning is in [`_design/DECISION_LOG.md`](_design/DECISION_LOG.md).
+Full reasoning is in [`docs/DECISION_LOG.md`](docs/DECISION_LOG.md).
 
 ## Repository layout
 
@@ -231,13 +233,14 @@ src-tauri/src/
   window_service.rs  window size, collapse, drag, About placement
 src-tauri/capabilities/   the allowed-request list for each window
 scripts/verify-boundary.mjs   fails the build if a change weakens the boundary
-src/ + build.ps1     the original WPF app, kept as the Windows behavior reference
-docs/                README images
-_design/             architecture, decision log, migration plan, design files
+docs/                architecture, decision log, design handoff, README images
 ```
 
+The original WPF app is preserved at git tags `wpf-checkpoint` and
+`wpf-final`.
+
 For the full design, read
-[`_design/TAURI_ARCHITECTURE.md`](_design/TAURI_ARCHITECTURE.md).
+[`docs/TAURI_ARCHITECTURE.md`](docs/TAURI_ARCHITECTURE.md).
 
 ## Verification
 
