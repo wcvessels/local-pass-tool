@@ -11,6 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use clipboard::ClipboardStatus;
 use serde::{Deserialize, Serialize};
 use tauri::{
     AppHandle, Manager, RunEvent, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
@@ -201,40 +202,6 @@ impl Drop for GeneratedBatch {
     fn drop(&mut self) {
         zeroize_strings(&mut self.passwords);
     }
-}
-
-#[derive(Debug, Serialize)]
-struct ClipboardStatus {
-    state: &'static str,
-    policy: &'static str,
-    deadline_ms: Option<u64>,
-    timeout_seconds: u32,
-    macos_best_effort_clear: bool,
-    release_sequence: u64,
-    last_release: Option<&'static str>,
-}
-
-impl From<clipboard::ClipboardStatus> for ClipboardStatus {
-    fn from(status: clipboard::ClipboardStatus) -> Self {
-        Self {
-            state: status.state,
-            policy: status.policy,
-            deadline_ms: status.deadline_ms,
-            timeout_seconds: status.timeout_seconds,
-            macos_best_effort_clear: status.macos_best_effort_clear,
-            release_sequence: status.release_sequence,
-            last_release: status.last_release.map(clipboard::ReleaseOutcome::as_str),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "snake_case")]
-enum ClearReason {
-    User,
-    Regenerate,
-    Close,
-    SessionEnding,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]
@@ -430,19 +397,6 @@ impl AppState {
         Ok(id.to_string())
     }
 
-    #[cfg(test)]
-    fn validate_row(&self, batch_id: &str, row_index: usize) -> CommandResult {
-        let state = self.lock()?;
-        let batch = state.batch.as_ref().ok_or(CommandError::StaleBatch)?;
-        if batch.id != batch_id {
-            return Err(CommandError::StaleBatch);
-        }
-        if row_index >= batch.passwords.len() {
-            return Err(CommandError::RowOutOfRange);
-        }
-        Ok(())
-    }
-
     fn password_for_copy(
         &self,
         batch_id: &str,
@@ -501,24 +455,6 @@ fn require_label(window: &WebviewWindow, allowed: &[&str]) -> CommandResult {
     }
 }
 
-#[cfg(target_os = "windows")]
-fn clipboard_owner(window: &WebviewWindow) -> Result<usize, CommandError> {
-    let owner = window
-        .hwnd()
-        .map_err(|_| CommandError::ClipboardUnavailable)?
-        .0 as usize;
-    if owner == 0 {
-        Err(CommandError::ClipboardUnavailable)
-    } else {
-        Ok(owner)
-    }
-}
-
-#[cfg(not(target_os = "windows"))]
-fn clipboard_owner(_window: &WebviewWindow) -> Result<usize, CommandError> {
-    Ok(0)
-}
-
 #[tauri::command]
 fn generate_passwords(
     window: WebviewWindow,
@@ -564,14 +500,12 @@ fn generate_passwords(
 }
 
 async fn run_clipboard_operation(
-    operation: impl FnOnce() -> Result<clipboard::ClipboardStatus, clipboard::ClipboardError>
-    + Send
-    + 'static,
+    operation: impl FnOnce() -> Result<ClipboardStatus, clipboard::ClipboardError> + Send + 'static,
 ) -> Result<ClipboardStatus, CommandError> {
     let status = tauri::async_runtime::spawn_blocking(operation)
         .await
         .map_err(|_| CommandError::ClipboardUnavailable)??;
-    Ok(status.into())
+    Ok(status)
 }
 
 #[tauri::command]
@@ -582,17 +516,15 @@ async fn copy_password(
     row_index: usize,
 ) -> Result<ClipboardStatus, CommandError> {
     require_label(&window, &["main"])?;
-    let owner = clipboard_owner(&window)?;
     let (password, generation) = state.password_for_copy(&batch_id, row_index)?;
     let clipboard = state.clipboard.clone();
-    run_clipboard_operation(move || clipboard.copy(password, owner, generation)).await
+    run_clipboard_operation(move || clipboard.copy(password, generation)).await
 }
 
 #[tauri::command]
 async fn clear_sensitive_state(
     window: WebviewWindow,
     state: State<'_, AppState>,
-    _reason: ClearReason,
     redacted_view_epoch: u64,
 ) -> Result<ClipboardStatus, CommandError> {
     require_label(&window, &["main"])?;
@@ -1443,12 +1375,15 @@ mod tests {
 
         assert_ne!(first, second);
         assert!(matches!(
-            state.validate_row(&first, 0),
+            state.password_for_copy(&first, 0),
             Err(CommandError::StaleBatch)
         ));
-        state.validate_row(&second, 0).unwrap();
+        assert_eq!(
+            state.password_for_copy(&second, 0).unwrap(),
+            (zeroize::Zeroizing::new("second".to_owned()), 2)
+        );
         assert!(matches!(
-            state.validate_row(&second, 1),
+            state.password_for_copy(&second, 1),
             Err(CommandError::RowOutOfRange)
         ));
     }
@@ -1465,10 +1400,10 @@ mod tests {
             state.clear_batch(1),
             Err(CommandError::StaleViewEpoch)
         ));
-        state.validate_row(&id, 0).unwrap();
+        state.password_for_copy(&id, 0).unwrap();
         state.clear_batch(2).unwrap();
         assert!(matches!(
-            state.validate_row(&id, 0),
+            state.password_for_copy(&id, 0),
             Err(CommandError::StaleBatch)
         ));
     }
@@ -1484,7 +1419,7 @@ mod tests {
         let _second_ticket = state.begin_generation(2).unwrap();
 
         assert!(matches!(
-            state.validate_row(&first, 0),
+            state.password_for_copy(&first, 0),
             Err(CommandError::StaleBatch)
         ));
     }
@@ -1502,7 +1437,7 @@ mod tests {
             state.commit_generation(first_ticket, &["first".to_owned()]),
             Err(CommandError::StaleViewEpoch)
         ));
-        state.validate_row(&second, 0).unwrap();
+        state.password_for_copy(&second, 0).unwrap();
     }
 
     #[test]

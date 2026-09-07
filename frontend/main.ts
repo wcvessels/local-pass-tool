@@ -108,11 +108,7 @@ function parseClipboardStatus(value: unknown): ClipboardStatus | null {
 }
 
 function policyReady(status: ClipboardStatus | null): boolean {
-  return (
-    status !== null &&
-    status.policy !== "not_implemented" &&
-    status.policy !== "unsupported"
-  );
+  return status !== null && status.policy !== "unsupported";
 }
 
 function releaseOutcomeStatus(outcome: string | null): { message: string; tone: Tone } | null {
@@ -304,7 +300,7 @@ async function startMain(): Promise<void> {
   });
 
   generateButton.addEventListener("click", () => void generate());
-  clearButton.addEventListener("click", () => void clearResults("user"));
+  clearButton.addEventListener("click", () => void clearResults());
   maskButton.addEventListener("click", () => {
     state.masked = !state.masked;
     if (!state.masked) state.revealed.clear();
@@ -418,7 +414,7 @@ async function startMain(): Promise<void> {
     if (event.target instanceof Element && event.target.closest(".password-display")) event.preventDefault();
   });
 
-  installShortcutGuards(statusElement, () => void generate(), () => void clearResults("user"));
+  installShortcutGuards(statusElement, () => void generate(), () => void clearResults());
   const layoutObserver = new ResizeObserver(reportContentHeight);
   layoutObserver.observe(shell);
   await refreshClipboardStatus(true);
@@ -659,10 +655,10 @@ async function startMain(): Promise<void> {
       return;
     }
     setStatus(statusElement, "Invalid native response was rejected and redacted.", "error");
-    await invoke("clear_sensitive_state", { reason: "user", redactedViewEpoch: epoch }).catch(() => undefined);
+    await invoke("clear_sensitive_state", { redactedViewEpoch: epoch }).catch(() => undefined);
   }
 
-  async function clearResults(reason: "user" | "regenerate" | "close" | "session_ending"): Promise<void> {
+  async function clearResults(): Promise<void> {
     if (
       state.passwords.length === 0 &&
       state.batchId === null &&
@@ -681,17 +677,15 @@ async function startMain(): Promise<void> {
     setStatus(statusElement, "Passwords removed from this window. Releasing clipboard\u2026");
     try {
       const parsed = parseClipboardStatus(
-        await invoke<unknown>("clear_sensitive_state", { reason, redactedViewEpoch: epoch }),
+        await invoke<unknown>("clear_sensitive_state", { redactedViewEpoch: epoch }),
       );
       if (!parsed) throw new Error("invalid_status");
       if (statusEpoch !== state.clipboardStatusEpoch) return;
       state.clipboardStatus = parsed;
       presentClipboardStatus(parsed);
-    } catch (error) {
+    } catch {
       if (statusEpoch !== state.clipboardStatusEpoch) return;
-      const message = isCode(error, "not_implemented")
-        ? "Passwords were removed from this window. Native clipboard release is not available yet."
-        : "Passwords were removed from this window. Clipboard release could not be confirmed.";
+      const message = "Passwords were removed from this window. Clipboard release could not be confirmed.";
       setStatus(statusElement, message, "warning");
     }
   }
@@ -722,11 +716,9 @@ async function startMain(): Promise<void> {
     } catch (error) {
       if (operation !== state.operation) return;
       if (statusEpoch !== state.clipboardStatusEpoch) return;
-      const message = isCode(error, "not_implemented")
-        ? "Password was not copied. Native clipboard handling is not available yet."
-        : isCode(error, "stale")
-          ? "That password batch is no longer available."
-          : "Password was not copied.";
+      const message = isCode(error, "stale")
+        ? "That password batch is no longer available."
+        : "Password was not copied.";
       setStatus(statusElement, message, "error");
     } finally {
       if (state.copyOperation === operation) {
