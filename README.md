@@ -147,9 +147,11 @@ What LocalPass cannot protect against:
 - Someone reading the computer's memory directly.
 - A crash, forced shutdown, or power loss before the clipboard clears.
 
-All four risks arrive through the clipboard. If a secret must never touch
-the clipboard, do not press **COPY**. Read the password from the screen and
-type it.
+The first and last of these exist only while a password is on the
+clipboard. Screen recording and memory inspection apply whenever a password
+is on screen, whether or not you press **COPY**. If a secret must never
+touch the clipboard, do not press **COPY**; read it from the screen and type
+it. That removes the clipboard risks, not the others.
 
 ## Clipboard by platform
 
@@ -236,8 +238,8 @@ scripts/verify-boundary.mjs   fails the build if a change weakens the boundary
 docs/                architecture, decision log, design handoff, README images
 ```
 
-The original WPF app is preserved at git tags `wpf-checkpoint` and
-`wpf-final`.
+The original WPF app is preserved at git tags `wpf-checkpoint` (commit
+`e048926`) and `wpf-final` (commit `e9e5600`).
 
 For the full design, read
 [`docs/TAURI_ARCHITECTURE.md`](docs/TAURI_ARCHITECTURE.md).
