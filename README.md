@@ -40,7 +40,7 @@ build.
 | Windows x64 | Built and tested by hand. Primary target. |
 | macOS (Apple Silicon and Intel) | Compiles and passes tests in CI. Not yet tested on real hardware. Not signed or notarized. |
 | Linux X11 | Compiles and passes tests in CI. Not yet tested on real hardware. |
-| Linux Wayland | Runs and generates passwords, but COPY is unavailable: the toolkit does not expose a safe per-entry clipboard handle. See [Clipboard by platform](#clipboard-by-platform). |
+| Linux Wayland | Runtime unverified, like X11. By design, COPY is unavailable: the toolkit does not expose a safe per-entry clipboard handle. See [Clipboard by platform](#clipboard-by-platform). |
 
 There are no downloadable releases yet. To use LocalPass today,
 [build it from source](#build). On macOS the build is unsigned, so
@@ -183,7 +183,9 @@ never asks clipboard managers to keep the value.
 **Linux Wayland.** The current toolkit does not give LocalPass a way to own
 and later clear only its own clipboard entry. Rather than write something it
 cannot safely remove, COPY is disabled and reports "unsupported on this
-platform". Generate and read passwords from the window.
+platform". That is the only Wayland behavior verified today, and it is
+verified by reading the code, not by running it. No one has launched the
+app on a Wayland desktop yet.
 
 ## Build
 
