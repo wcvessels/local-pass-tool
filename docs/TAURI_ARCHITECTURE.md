@@ -1,6 +1,6 @@
 # LocalPass Tauri 2 architecture
 
-Status: accepted for scaffolding; clipboard, Tauri, and WPF parity reviews returned GO on 2026-07-13  
+Status: implemented. Windows verified natively; macOS and Linux compile and pass tests in CI, runtime unverified. Wayland clipboard unsupported.  
 Targets: Windows, macOS, Linux desktop  
 UI: vanilla TypeScript, HTML, CSS  
 Backend: Rust in Tauri 2
@@ -9,9 +9,11 @@ Backend: Rust in Tauri 2
 
 When references disagree, use this order:
 
-1. Security and lifecycle behavior in `src/Core.cs` and `src/MainWindow.Actions.cs`.
-2. User-facing behavior documented by `README.md` at the `codex/wpf-checkpoint` commit. The live README may change only when a reviewed migration gate requires it.
-3. Visual geometry and styling in `_design/design_handoff_localpass`.
+1. Security and lifecycle behavior in `src/Core.cs` and `src/MainWindow.Actions.cs` at tag `wpf-checkpoint`.
+2. User-facing behavior documented by `README.md` at tag `wpf-checkpoint`.
+3. Visual geometry and styling in `docs/design_handoff_localpass`, a historical visual reference only; its scripts do not define behavior.
+
+Current behavior is governed by this document and `docs/DECISION_LOG.md`.
 
 The HTML handoff is not production security code. Its `random % n` selection is biased, and its timed clipboard overwrite can erase a newer value from another application. The Rust port must preserve `Core.cs` rejection sampling and owned-only clipboard release instead. It must also preserve the current symbol set `!@#$%^&*_-+=?`; the handoff omits `_`.
 
@@ -19,7 +21,7 @@ The HTML handoff is not production security code. Its `random % n` selection is 
 
 - One local-only desktop app for Windows, macOS, and Linux.
 - Preserve current generation, masking, clipboard, window, theme, accessibility, and keyboard behavior.
-- Keep WPF source, build, and executable as the Windows reference until every parity gate passes.
+- The WPF implementation is preserved at tags `wpf-checkpoint` and `wpf-final` (LP-013) as the historical Windows reference.
 - Keep passwords, settings, and operational state in memory only.
 - Give each local webview only narrow LocalPass commands. No generic clipboard, filesystem, shell, opener, HTTP, updater, process, or persistence APIs.
 - Embed all UI assets. Deny remote navigation, new windows, downloads, and network connections.
@@ -79,14 +81,14 @@ The frontend receives generated strings because it must display them. Rust retai
 
 ## Command surface
 
-Every command appears in two explicit lists: `tauri_build::AppManifest::commands(...)` generates its `allow-*`/`deny-*` permissions, and `Builder::invoke_handler(generate_handler![...])` registers the runtime handler. Tauri config explicitly sets `app.security.capabilities: ["localpass-main", "localpass-about"]`; it never relies on automatic capability-file discovery. `localpass-main` targets only `windows: ["main"]`. `localpass-about` targets only `windows: ["about"]` and permits timer read/update, macOS policy read/update, pointer-inside state, and popup close. No `core:default`, remote URL, or wildcard capability.
+Every command appears in two explicit lists: `tauri_build::AppManifest::commands(...)` generates its `allow-*`/`deny-*` permissions, and `Builder::invoke_handler(generate_handler![...])` registers the runtime handler. Tauri config explicitly sets `app.security.capabilities: ["localpass-main", "localpass-about"]`; it never relies on automatic capability-file discovery. `localpass-main` targets only `windows: ["main"]`. `localpass-about` targets only `windows: ["about"]` and permits timer read/update, macOS policy read/update, collapsed-opacity update, pointer-inside state, and popup close. No `core:default`, remote URL, or wildcard capability.
 
 Every command, generated permission, runtime handler, and `tauri_build` invocation is compiled and registered on every target. Only native adapter internals use `cfg`; unsupported platform commands return typed `Unsupported`. Rust also validates the injected caller window label.
 
 | Capability | Exact allowed commands |
 |---|---|
 | `localpass-main` / `main` | `generate_passwords`, `copy_password`, `clear_sensitive_state`, `clipboard_status`, `set_window_view`, `set_pointer_inside`, `set_always_on_top`, `start_window_drag`, `open_about`, `redaction_ack`, `request_close` |
-| `localpass-about` / `about` | `clipboard_status`, `set_clipboard_timeout`, `set_macos_best_effort_clear`, `set_pointer_inside`, `start_window_drag`, `close_about` |
+| `localpass-about` / `about` | `clipboard_status`, `set_clipboard_timeout`, `set_macos_best_effort_clear`, `set_collapsed_opacity`, `set_pointer_inside`, `start_window_drag`, `close_about` |
 
 
 | Command | Input | Output / rule |
@@ -98,6 +100,7 @@ Every command, generated permission, runtime handler, and `tauri_build` invocati
 | `set_clipboard_timeout` | seconds | Rust enforces `5..60` and a multiple of five. Recomputes an `OwnershipSafe` or `BestEffortArmed` lease deadline from original copy time. `NonMutating` and `BestEffortDisarmed` remain deadline-free. |
 | `set_window_view` | `expanded` or `rolled`; validated content height | Rust chooses the fixed width, clamps height/position to monitor work area, and applies the layout. |
 | `set_macos_best_effort_clear` | boolean | macOS only. Defaults to `false`. `true` affects future copies only. `false` is serialized by the actor, irreversibly disarms the current lease, cancels its timer/retries, and returns only when effective. Other platforms return `Unsupported`. |
+| `set_collapsed_opacity` | integer percent | About only. Rust enforces `25..75` and a multiple of five. Session-only; resets to 50 on launch. Notifies the main webview of the accepted value. |
 | `set_pointer_inside` | boolean | Supplies main/About hover state for inactive-shell opacity only; hover never expands. |
 | `set_always_on_top` | boolean | Changes only the main window. |
 | `start_window_drag` | none | Starts native drag only for the caller-owned `main` or `about` window; no target label is accepted. |
@@ -111,7 +114,7 @@ No command accepts a path, URL, shell text, arbitrary window label, or arbitrary
 ## Password generator
 
 - Exact ranges: length `4..64`, count `1..99`.
-- Exact character groups and ambiguous set from `src/Core.cs`.
+- Exact character groups and ambiguous set from `src/Core.cs` at `wpf-checkpoint`.
 - At least one enabled group; every enabled group contributes at least one character.
 - `getrandom` OS entropy only. Entropy failure is fatal to generation; no fallback.
 - Same 32-bit rejection sampling as WPF, then Fisher-Yates shuffle.
@@ -165,12 +168,12 @@ The renderer is also denied alternate copy paths. Password elements are not form
 
 ## Window behavior
 
-- One frameless, non-resizable 400 logical-pixel main window with no transparent gutter or exterior window/CSS shadow, centered on first launch and shown in the Windows taskbar/macOS Dock/Linux task list, matching the WPF checkpoint.
+- One frameless, non-resizable main window, 400 logical pixels wide at zoom 100% or below and scaling with zoom above 100% (up to 800 at 200%), with no transparent gutter or exterior window/CSS shadow, centered on first launch and shown in the Windows taskbar/macOS Dock/Linux task list, matching the WPF checkpoint.
 - Rust creates the webview from local config with `create: false` in static config, then installs navigation/new-window/download denial hooks before showing it.
 - Expanded height follows measured UI content but is validated and clamped to the current monitor work area.
-- About is a separate local, frameless, shadow-free, taskbar-hidden 320 px popup. Automatic placement tries right, left, below, then above with a 14 px gap and overlaps only when the monitor work area cannot fit both windows. Its title region is natively draggable. Reopening resets automatic placement. Its validated URL query receives the current `dark` or `light` session theme; neither theme nor position is persisted.
+- About is a separate local, frameless, shadow-free, taskbar-hidden 360×400 px popup. Automatic placement tries right, left, below, then above with a 14 px gap and overlaps only when the monitor work area cannot fit both windows. Its title region is natively draggable. Reopening resets automatic placement. Its validated URL query receives the current `dark` or `light` session theme; neither theme nor position is persisted.
 - Expanded and About backgrounds use 90% alpha in both themes. Their whole-shell opacity is `1.0` focused, `0.95` inactive-hovered, and `0.85` inactive-idle. About exposes a session-only collapsed-opacity control from `0.25` to `0.75` in `0.05` steps, defaulting to `0.50`; hover does not change that value or flash the whole surface. High Contrast overrides this with opaque system colors.
-- Collapsed mode is exactly 40 px tall and keeps brand, `CLICK TO EXPAND`, and a separate guarded-close control aligned with the expanded header. Its app-bar row is vertically centered, uses a distinct gap before guarded close, and limits hover feedback to the expand label. Expansion requires a collapsed-bar click or keyboard Enter/Space.
+- Collapsed mode is 40 px tall at zoom 100% or below, scaling with zoom above 100% (up to 800×80 at 200%) and capped by the monitor work area. It keeps brand, `CLICK TO EXPAND`, and a separate guarded-close control aligned with the expanded header. Its app-bar row is vertically centered, uses a distinct gap before guarded close, and limits hover feedback to the expand label. Expansion requires a collapsed-bar click or keyboard Enter/Space.
 - Loss of whole-app focus collapses immediately after one event-loop deferral, allowing main↔About focus handoff. About counts as inside the app.
 - Window blur immediately masks every result regardless of mask-toggle state.
 - Pin controls native always-on-top. Theme, pin, position, and layout remain session-only.
@@ -248,4 +251,4 @@ References: [Windows WebView2 modes](https://v2.tauri.app/distribute/windows-ins
 - External fetch, websocket, navigation, popup, download, remote image, and unauthorized IPC tests fail.
 - Windows, macOS, X11, GNOME Wayland, and KDE Wayland smoke evidence exists before cross-platform parity is claimed. macOS parity requires the approved default-OFF opt-in contract and exact warning; failed Wayland source-identity proof still blocks the parity declaration.
 - Release README must affirmatively document macOS default-OFF/session-only behavior, non-clearing on timeout/Clear/regenerate/close while OFF, future-copy-only opt-in, residual clobber race, and reset on exit. Omitting the old atomic-safety claim is insufficient.
-- WPF reference files remain until these gates pass. Removal or archival is a separate reviewed change.
+- The WPF reference is preserved at tags `wpf-checkpoint` and `wpf-final` (LP-013). The gates above remain open.

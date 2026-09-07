@@ -1,5 +1,10 @@
 # Handoff: LocalPass — local password generator widget
 
+> **Historical visual reference.** This bundle is the design handoff that guided the
+> Tauri UI. Its scripts (generation, clipboard timer, fit-to-width) are prototype
+> code and do not define application behavior. Behavior is governed by
+> `../TAURI_ARCHITECTURE.md` and `../DECISION_LOG.md`.
+
 ## Overview
 LocalPass is a small, always-on-top desktop utility widget that generates cryptographically
 random passwords **entirely on the user's machine** — nothing is stored, logged, or transmitted.
@@ -21,8 +26,9 @@ Two files are included:
 - **`LocalPass.standalone.html`** — a self-contained, dependency-free reimplementation
   (plain HTML/CSS/vanilla JS, no build step, no runtime). **Start here.** Open it in a browser
   to see the full behavior, and read its `<script>` — the generation logic, clipboard auto-clear,
-  fit-to-width sizing, and all state transitions are written out plainly with comments. This is
-  the source of truth for behavior.
+  fit-to-width sizing, and all state transitions are written out plainly with comments. Its script
+  shows the intended interaction flow; the application's actual generation, clipboard, and
+  window behavior is defined in `../TAURI_ARCHITECTURE.md`.
 - **`LocalPass Interactive (glass).dc.html`** — the original design-tool prototype. It relies on
   a proprietary template runtime (`support.js`, **not included and not needed**), so it will not
   run on its own. Use it only as a secondary cross-reference for exact markup/styles. Prefer the
