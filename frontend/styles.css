@@ -108,13 +108,6 @@ input:disabled,
   opacity: 0.42;
 }
 
-button[aria-busy="true"],
-button[data-pending="true"],
-.is-pending {
-  cursor: progress;
-  opacity: 0.68;
-}
-
 :where(button, input):focus { outline: none; }
 
 :where(button, input):focus-visible {

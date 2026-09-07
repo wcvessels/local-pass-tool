@@ -4,6 +4,7 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
+use serde::Serialize;
 use zeroize::Zeroizing;
 
 const DEFAULT_TIMEOUT_SECONDS: u32 = 30;
@@ -177,7 +178,8 @@ pub enum ClipboardError {
     ReleaseFailed,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ReleaseOutcome {
     Cleared,
     OwnershipLost,
@@ -187,20 +189,7 @@ pub enum ReleaseOutcome {
     SuppressedByPolicy,
 }
 
-impl ReleaseOutcome {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Cleared => "cleared",
-            Self::OwnershipLost => "ownership_lost",
-            Self::Busy => "busy",
-            Self::Unsupported => "unsupported",
-            Self::Fatal => "fatal",
-            Self::SuppressedByPolicy => "suppressed_by_policy",
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 pub struct ClipboardStatus {
     pub state: &'static str,
     pub policy: &'static str,
@@ -280,7 +269,7 @@ impl From<ClearOutcome> for ReleaseOutcome {
 trait ClipboardAdapter: Send + 'static {
     type Token: Send + 'static;
 
-    fn copy(&mut self, text: &str, owner: usize) -> CopyOutcome<Self::Token>;
+    fn copy(&mut self, text: &str) -> CopyOutcome<Self::Token>;
     fn clear_owned(&mut self, token: &Self::Token) -> ClearOutcome;
 
     fn poll_interval(&self) -> Option<Duration> {
@@ -335,7 +324,6 @@ impl<A: ClipboardAdapter> ActorCore<A> {
     fn copy(
         &mut self,
         text: &str,
-        owner: usize,
         generation: u64,
         now: Instant,
     ) -> Result<ClipboardStatus, ClipboardError> {
@@ -343,7 +331,7 @@ impl<A: ClipboardAdapter> ActorCore<A> {
             return Err(ClipboardError::StaleGeneration);
         }
 
-        match self.adapter.copy(text, owner) {
+        match self.adapter.copy(text) {
             CopyOutcome::PreCommitFailure => Err(ClipboardError::PreCommitFailure),
             CopyOutcome::Unsupported => Err(ClipboardError::Unsupported),
             CopyOutcome::DestructiveFailure => {
@@ -626,7 +614,6 @@ fn deadline_millis(deadline: Instant, now: Instant, wall_now: SystemTime) -> u64
 enum Message {
     Copy {
         secret: Zeroizing<String>,
-        owner: usize,
         generation: u64,
         reply: Sender<Result<ClipboardStatus, ClipboardError>>,
     },
@@ -696,14 +683,12 @@ impl ClipboardActor {
     pub fn copy(
         &self,
         secret: Zeroizing<String>,
-        owner: usize,
         generation: u64,
     ) -> Result<ClipboardStatus, ClipboardError> {
         let (reply, response) = mpsc::channel();
         self.sender
             .send(Message::Copy {
                 secret,
-                owner,
                 generation,
                 reply,
             })
@@ -802,11 +787,10 @@ fn run_actor<A: ClipboardAdapter>(mut core: ActorCore<A>, receiver: Receiver<Mes
         match message {
             Message::Copy {
                 secret,
-                owner,
                 generation,
                 reply,
             } => {
-                let _ = reply.send(core.copy(secret.as_str(), owner, generation, now));
+                let _ = reply.send(core.copy(secret.as_str(), generation, now));
             }
             Message::Release {
                 invalidated_before,
@@ -839,7 +823,7 @@ struct UnsupportedAdapter;
 impl ClipboardAdapter for UnsupportedAdapter {
     type Token = ();
 
-    fn copy(&mut self, _text: &str, _owner: usize) -> CopyOutcome<Self::Token> {
+    fn copy(&mut self, _text: &str) -> CopyOutcome<Self::Token> {
         CopyOutcome::Unsupported
     }
 
@@ -930,7 +914,7 @@ mod windows_adapter {
     impl ClipboardAdapter for WindowsAdapter {
         type Token = WindowsToken;
 
-        fn copy(&mut self, text: &str, _owner: usize) -> CopyOutcome<Self::Token> {
+        fn copy(&mut self, text: &str) -> CopyOutcome<Self::Token> {
             if text.is_empty() {
                 return CopyOutcome::PreCommitFailure;
             }
@@ -1248,7 +1232,7 @@ mod linux_adapter {
     impl ClipboardAdapter for LinuxAdapter {
         type Token = X11LeaseToken;
 
-        fn copy(&mut self, text: &str, _owner: usize) -> CopyOutcome<Self::Token> {
+        fn copy(&mut self, text: &str) -> CopyOutcome<Self::Token> {
             if text.is_empty() {
                 return CopyOutcome::PreCommitFailure;
             }
@@ -1639,7 +1623,7 @@ mod macos_adapter {
     impl ClipboardAdapter for MacOsAdapter {
         type Token = MacOsToken;
 
-        fn copy(&mut self, text: &str, _owner: usize) -> CopyOutcome<Self::Token> {
+        fn copy(&mut self, text: &str) -> CopyOutcome<Self::Token> {
             if text.is_empty() {
                 return CopyOutcome::PreCommitFailure;
             }
@@ -1717,6 +1701,7 @@ mod tests {
         time::{Duration, Instant},
     };
 
+    use tauri::ipc::{InvokeResponseBody, IpcResponse};
     use zeroize::Zeroizing;
 
     use super::*;
@@ -1743,7 +1728,7 @@ mod tests {
     impl ClipboardAdapter for MockAdapter {
         type Token = u64;
 
-        fn copy(&mut self, _text: &str, _owner: usize) -> CopyOutcome<Self::Token> {
+        fn copy(&mut self, _text: &str) -> CopyOutcome<Self::Token> {
             self.copy_outcomes
                 .pop_front()
                 .expect("missing mock copy outcome")
@@ -1770,17 +1755,17 @@ mod tests {
         );
         let mut core = ActorCore::new(adapter, PlatformMode::OwnershipSafe);
 
-        core.copy("one", 1, 1, start).unwrap();
+        core.copy("one", 1, start).unwrap();
         let first_generation = core.lease.as_ref().unwrap().generation;
         assert_eq!(
-            core.copy("two", 1, 1, start + Duration::from_secs(1)),
+            core.copy("two", 1, start + Duration::from_secs(1)),
             Err(ClipboardError::PreCommitFailure)
         );
         assert_eq!(core.lease.as_ref().unwrap().token, 1);
         assert_eq!(core.lease.as_ref().unwrap().generation, first_generation);
 
         assert_eq!(
-            core.copy("three", 1, 1, start + Duration::from_secs(2)),
+            core.copy("three", 1, start + Duration::from_secs(2)),
             Err(ClipboardError::DestructiveFailure)
         );
         assert!(core.lease.is_none());
@@ -1796,7 +1781,7 @@ mod tests {
         let mut core = ActorCore::new(adapter, PlatformMode::OwnershipSafe);
 
         assert_eq!(
-            core.copy("secret", 1, 1, start),
+            core.copy("secret", 1, start),
             Err(ClipboardError::CommitUncertain)
         );
         assert!(core.lease.is_none());
@@ -1819,7 +1804,7 @@ mod tests {
         let adapter = MockAdapter::new([CopyOutcome::Committed(1)], [ClearOutcome::Cleared]);
         let mut core = ActorCore::new(adapter, PlatformMode::OwnershipSafe);
 
-        core.copy("secret", 1, 1, start).unwrap();
+        core.copy("secret", 1, start).unwrap();
         let status = core.set_timeout(5, start + Duration::from_secs(6)).unwrap();
 
         assert_eq!(status.last_release, Some(ReleaseOutcome::Cleared));
@@ -1834,7 +1819,7 @@ mod tests {
         let adapter = MockAdapter::new([CopyOutcome::Committed(1)], [ClearOutcome::Cleared]);
         let mut core = ActorCore::new(adapter, PlatformMode::OwnershipSafe);
 
-        core.copy("secret", 1, 1, start).unwrap();
+        core.copy("secret", 1, start).unwrap();
         core.tick(start + Duration::from_secs(30));
         let released = core.status(start + Duration::from_secs(30));
         assert_eq!(released.last_release, Some(ReleaseOutcome::Cleared));
@@ -1858,9 +1843,8 @@ mod tests {
         );
         let mut core = ActorCore::new(adapter, PlatformMode::OwnershipSafe);
 
-        core.copy("one", 1, 1, start).unwrap();
-        core.copy("two", 1, 2, start + Duration::from_secs(1))
-            .unwrap();
+        core.copy("one", 1, start).unwrap();
+        core.copy("two", 2, start + Duration::from_secs(1)).unwrap();
         core.tick(start + Duration::from_secs(30));
         assert!(core.adapter.clear_calls.is_empty());
 
@@ -1878,7 +1862,7 @@ mod tests {
         );
         let mut core = ActorCore::new(adapter, PlatformMode::OwnershipSafe);
 
-        core.copy("secret", 1, 1, start).unwrap();
+        core.copy("secret", 1, start).unwrap();
         let status = core.release(start).unwrap();
         assert_eq!(status.state, "release_pending");
         core.tick(start + BUSY_RETRY - Duration::from_millis(1));
@@ -1895,7 +1879,7 @@ mod tests {
         let adapter = MockAdapter::new([CopyOutcome::Committed(1), CopyOutcome::Committed(2)], []);
         let mut core = ActorCore::new(adapter, PlatformMode::MacOs);
 
-        let off = core.copy("off", 1, 1, start).unwrap();
+        let off = core.copy("off", 1, start).unwrap();
         assert_eq!(off.state, "policy_off");
         assert_eq!(off.deadline_ms, None);
 
@@ -1909,7 +1893,7 @@ mod tests {
         core.release(start + Duration::from_secs(3)).unwrap();
         assert!(core.adapter.clear_calls.is_empty());
 
-        core.copy("armed", 1, 2, start + Duration::from_secs(4))
+        core.copy("armed", 2, start + Duration::from_secs(4))
             .unwrap();
         assert_eq!(
             core.lease.as_ref().unwrap().clear_policy,
@@ -1937,7 +1921,7 @@ mod tests {
         let mut core = ActorCore::new(adapter, PlatformMode::MacOs);
 
         core.set_macos_best_effort(true, start).unwrap();
-        core.copy("armed", 1, 1, start).unwrap();
+        core.copy("armed", 1, start).unwrap();
         let status = core
             .set_macos_best_effort(false, start + Duration::from_secs(1))
             .unwrap();
@@ -1959,7 +1943,7 @@ mod tests {
         let mut core = ActorCore::new(adapter, PlatformMode::MacOs);
 
         core.set_macos_best_effort(true, start).unwrap();
-        core.copy("armed", 1, 1, start).unwrap();
+        core.copy("armed", 1, start).unwrap();
         let prior = core.status(start + Duration::from_secs(29));
         core.tick(start + Duration::from_secs(30));
         let status = core
@@ -1980,7 +1964,7 @@ mod tests {
         let mut core = ActorCore::new(adapter, PlatformMode::MacOs);
 
         core.set_macos_best_effort(true, start).unwrap();
-        core.copy("armed", 1, 1, start).unwrap();
+        core.copy("armed", 1, start).unwrap();
         core.tick(start + Duration::from_secs(30));
         let prior = core.status(start + Duration::from_secs(31));
         let status = core
@@ -1998,9 +1982,7 @@ mod tests {
         let actor = ClipboardActor::spawn(adapter, PlatformMode::MacOs);
 
         actor.set_macos_best_effort(true).unwrap();
-        actor
-            .copy(Zeroizing::new("secret".to_owned()), 1, 1)
-            .unwrap();
+        actor.copy(Zeroizing::new("secret".to_owned()), 1).unwrap();
         actor.set_macos_best_effort(false).unwrap();
         actor.set_macos_best_effort(true).unwrap();
         actor.set_timeout(5).unwrap();
@@ -2029,7 +2011,7 @@ mod tests {
         let adapter = MockAdapter::new([CopyOutcome::Committed(3)], []);
         let mut core = ActorCore::new(adapter, PlatformMode::MacOs);
 
-        core.copy("off", 1, 1, start).unwrap();
+        core.copy("off", 1, start).unwrap();
         core.tick(start + Duration::from_secs(300));
         let status = core.release(start + Duration::from_secs(301)).unwrap();
 
@@ -2041,16 +2023,40 @@ mod tests {
     }
 
     #[test]
-    fn deadline_is_serialized_as_absolute_unix_milliseconds() {
+    fn clipboard_status_and_release_outcomes_keep_ipc_wire_contract() {
         let start = Instant::now();
         let adapter = MockAdapter::new([CopyOutcome::Committed(1)], []);
         let mut core = ActorCore::new(adapter, PlatformMode::OwnershipSafe);
-        core.copy("secret", 1, 1, start).unwrap();
+        core.copy("secret", 1, start).unwrap();
 
         let wall_now = UNIX_EPOCH + Duration::from_secs(1_000);
         let status = core.status_at(start, wall_now);
 
         assert_eq!(status.deadline_ms, Some(1_030_000));
+        let InvokeResponseBody::Json(json) = status.body().unwrap() else {
+            panic!("clipboard status must use JSON IPC");
+        };
+        assert_eq!(
+            json,
+            concat!(
+                r#"{"state":"countdown","policy":"ownership_safe","deadline_ms":1030000,"#,
+                r#""timeout_seconds":30,"macos_best_effort_clear":false,"#,
+                r#""last_release":null,"release_sequence":0}"#,
+            )
+        );
+        for (outcome, wire_name) in [
+            (ReleaseOutcome::Cleared, "cleared"),
+            (ReleaseOutcome::OwnershipLost, "ownership_lost"),
+            (ReleaseOutcome::Busy, "busy"),
+            (ReleaseOutcome::Unsupported, "unsupported"),
+            (ReleaseOutcome::Fatal, "fatal"),
+            (ReleaseOutcome::SuppressedByPolicy, "suppressed_by_policy"),
+        ] {
+            assert_eq!(
+                outcome.body().unwrap().deserialize::<String>().unwrap(),
+                wire_name
+            );
+        }
     }
 
     #[test]
@@ -2061,11 +2067,11 @@ mod tests {
 
         core.invalidate_before(2, start).unwrap();
         assert_eq!(
-            core.copy("stale", 1, 1, start),
+            core.copy("stale", 1, start),
             Err(ClipboardError::StaleGeneration)
         );
         assert_eq!(core.adapter.copy_outcomes.len(), 1);
-        core.copy("current", 1, 2, start).unwrap();
+        core.copy("current", 2, start).unwrap();
     }
 
     #[test]
@@ -2074,7 +2080,7 @@ mod tests {
         let adapter = MockAdapter::new([CopyOutcome::Committed(1)], [ClearOutcome::Cleared]);
         let mut core = ActorCore::new(adapter, PlatformMode::OwnershipSafe);
 
-        core.copy("old", 1, 1, start).unwrap();
+        core.copy("old", 1, start).unwrap();
         let status = core.invalidate_before(2, start).unwrap();
 
         assert_eq!(status.last_release, Some(ReleaseOutcome::Cleared));
@@ -2089,7 +2095,7 @@ mod tests {
         let mut core = ActorCore::new(adapter, PlatformMode::OwnershipSafe);
 
         core.invalidate_before(2, start).unwrap();
-        core.copy("current", 1, 2, start).unwrap();
+        core.copy("current", 2, start).unwrap();
         core.invalidate_before(2, start).unwrap();
 
         assert_eq!(core.lease.as_ref().unwrap().generation, 2);
@@ -2102,7 +2108,7 @@ mod tests {
 
         actor.release_async(2).unwrap();
         assert_eq!(
-            actor.copy(Zeroizing::new("stale".to_owned()), 1, 1),
+            actor.copy(Zeroizing::new("stale".to_owned()), 1),
             Err(ClipboardError::StaleGeneration)
         );
     }
