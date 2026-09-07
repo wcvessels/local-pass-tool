@@ -1,9 +1,9 @@
 # LocalPass Tauri 2 architecture
 
-Status: implemented. Windows verified natively; macOS and Linux compile and pass tests in CI, runtime unverified. Wayland clipboard unsupported.  
-Targets: Windows, macOS, Linux desktop  
-UI: vanilla TypeScript, HTML, CSS  
-Backend: Rust in Tauri 2
+- Status: implemented. Windows verified natively; macOS and Linux compile and pass tests in CI, runtime unverified. Wayland clipboard unsupported.
+- Targets: Windows, macOS, Linux desktop
+- UI: vanilla TypeScript, HTML, CSS
+- Backend: Rust in Tauri 2
 
 ## Authority order
 
