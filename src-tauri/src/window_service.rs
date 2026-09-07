@@ -90,13 +90,11 @@ pub fn main_bounds(
 ) -> Result<LogicalBounds, WindowServiceError> {
     validate_content_height(measured_content_height)?;
     validate_zoom_percent(zoom_percent)?;
-    let width = match view {
-        View::Expanded => MAIN_WIDTH * f64::from(zoom_percent.max(100)) / 100.0,
-        View::Rolled => MAIN_WIDTH,
-    };
+    let zoom = f64::from(zoom_percent.max(100));
+    let width = MAIN_WIDTH * zoom / 100.0;
     let height = match view {
         View::Expanded => measured_content_height.ceil(),
-        View::Rolled => ROLLED_HEIGHT,
+        View::Rolled => ROLLED_HEIGHT * zoom / 100.0,
     };
     clamp_bounds(
         LogicalBounds::new(current_x, current_y, width, height),
@@ -645,16 +643,16 @@ mod tests {
     }
 
     #[test]
-    fn zoom_scales_expanded_width_and_preserves_rolled_size() {
-        for (zoom, width) in [
-            (75, 400.0),
-            (90, 400.0),
-            (100, 400.0),
-            (110, 440.0),
-            (125, 500.0),
-            (150, 600.0),
-            (175, 700.0),
-            (200, 800.0),
+    fn zoom_scales_both_widths_and_rolled_height() {
+        for (zoom, width, rolled_height) in [
+            (75, 400.0, 40.0),
+            (90, 400.0, 40.0),
+            (100, 400.0, 40.0),
+            (110, 440.0, 44.0),
+            (125, 500.0, 50.0),
+            (150, 600.0, 60.0),
+            (175, 700.0, 70.0),
+            (200, 800.0, 80.0),
         ] {
             assert_eq!(
                 main_bounds(View::Expanded, 640.2, zoom, 100.0, 120.0, WORK_AREA).unwrap(),
@@ -662,7 +660,7 @@ mod tests {
             );
             assert_eq!(
                 main_bounds(View::Rolled, 640.2, zoom, 100.0, 120.0, WORK_AREA).unwrap(),
-                LogicalBounds::new(100.0, 120.0, 400.0, 40.0)
+                LogicalBounds::new(100.0, 120.0, width, rolled_height)
             );
         }
     }
@@ -702,7 +700,12 @@ mod tests {
         );
         assert_eq!(
             main_bounds(View::Rolled, 700.2, 200, -1100.0, -750.0, small_area).unwrap(),
-            LogicalBounds::new(-1100.0, -750.0, 400.0, 40.0)
+            LogicalBounds::new(-1200.0, -750.0, 600.0, 80.0)
+        );
+        let short_area = LogicalBounds::new(-600.0, -100.0, 500.0, 60.0);
+        assert_eq!(
+            main_bounds(View::Rolled, 700.2, 200, -100.0, 0.0, short_area).unwrap(),
+            short_area
         );
         let large_area = LogicalBounds::new(-1920.0, -1080.0, 1920.0, 1080.0);
         assert_eq!(
