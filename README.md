@@ -113,15 +113,19 @@ only ask. Think of the window as a counter and the Rust core as the back
 office.
 
 - **Randomness comes from the operating system.** LocalPass uses the same
-  random source the OS uses for encryption keys. It throws away and redraws
-  any value that would favor some characters over others
-  ([rejection sampling](https://en.wikipedia.org/wiki/Rejection_sampling)),
-  so every allowed character is equally likely. The step that guarantees
-  one character from each group you turned on uses a
-  [Fisher-Yates shuffle](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle),
-  which puts those characters at random positions instead of fixed ones.
-  If the OS random source is not available, LocalPass refuses to make a
-  password. It never falls back to a weaker method.
+  random source the OS uses for encryption keys. Every draw uses
+  [rejection sampling](https://en.wikipedia.org/wiki/Rejection_sampling),
+  so within the set being drawn from, each character is equally likely; no
+  modulo bias. Generation draws one character from each group you turned
+  on, fills the remaining positions from all enabled characters together,
+  then runs a
+  [Fisher-Yates shuffle](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle)
+  so the guaranteed characters land at random positions. Because of that
+  one-per-group guarantee, a character from a small group (the 13 symbols)
+  is somewhat more likely to appear than a character from a large group
+  (26 lowercase letters). That is the cost of guaranteeing every group is
+  represented. If the OS random source is not available, LocalPass refuses
+  to make a password. It never falls back to a weaker method.
 - **The Rust core keeps the passwords.** Generated passwords live in Rust
   memory that is wiped when no longer needed. The window gets a copy to
   display, plus an ID number for each row. When you press **COPY**, the
