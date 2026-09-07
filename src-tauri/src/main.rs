@@ -833,6 +833,14 @@ fn apply_effects(app: &AppHandle, effects: Effects) {
         let callback_app = deferred_app.clone();
         let _ = deferred_app.run_on_main_thread(move || {
             let state = callback_app.state::<AppState>();
+            // About can close before the main WebView reports its focus gain.
+            // Recheck native focus at the collapse boundary as well.
+            #[cfg(target_os = "windows")]
+            let main_is_foreground = callback_app
+                .get_webview_window("main")
+                .is_some_and(|main| window_service::is_foreground_window(&main));
+            #[cfg(not(target_os = "windows"))]
+            let main_is_foreground = false;
             let effects = {
                 let mut windows = state
                     .windows
@@ -841,7 +849,11 @@ fn apply_effects(app: &AppHandle, effects: Effects) {
                 if windows.close.is_closing() {
                     return;
                 }
-                windows.coordinator.roll_due(token)
+                if main_is_foreground {
+                    windows.coordinator.set_focus(Surface::Main, true)
+                } else {
+                    windows.coordinator.roll_due(token)
+                }
             };
             apply_effects(&callback_app, effects);
         });
@@ -850,17 +862,24 @@ fn apply_effects(app: &AppHandle, effects: Effects) {
 
 fn install_window_events(app: &AppHandle, window: &WebviewWindow, surface: Surface) {
     let app = app.clone();
+    #[cfg(target_os = "windows")]
+    let native_window = window.clone();
     window.on_window_event(move |event| match event {
         WindowEvent::Focused(focused) => {
-            if surface == Surface::About && !*focused {
-                let state = app.state::<AppState>();
-                let _ = close_about_window(&app, state.inner());
-                return;
-            }
             if surface == Surface::Main && !*focused {
                 if let Some(main) = app.get_webview_window("main") {
                     let _ = main.eval(MASK_ALL_SCRIPT);
                 }
+            }
+            let focused = *focused;
+            // WebView2 can lose child focus during a native titlebar drag while
+            // its top-level window stays active. Keep masking above on any blur.
+            #[cfg(target_os = "windows")]
+            let focused = focused || window_service::is_foreground_window(&native_window);
+            if surface == Surface::About && !focused {
+                let state = app.state::<AppState>();
+                let _ = close_about_window(&app, state.inner());
+                return;
             }
             let state = app.state::<AppState>();
             let effects = {
@@ -868,7 +887,7 @@ fn install_window_events(app: &AppHandle, window: &WebviewWindow, surface: Surfa
                     .windows
                     .lock()
                     .unwrap_or_else(|poisoned| poisoned.into_inner());
-                windows.coordinator.set_focus(surface, *focused)
+                windows.coordinator.set_focus(surface, focused)
             };
             apply_effects(&app, effects);
         }

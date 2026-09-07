@@ -739,8 +739,9 @@ button[data-pending="true"],
 }
 
 .shell--rolled {
-  height: 40px;
-  padding: 7px 16px;
+  --rolled-unit: max(1rem, 16px);
+  height: calc(2.5 * var(--rolled-unit));
+  padding: calc(0.5 * var(--rolled-unit) - 1px) var(--rolled-unit);
   opacity: var(--collapsed-opacity);
 }
 
@@ -748,58 +749,65 @@ button[data-pending="true"],
 
 .rolled-content {
   min-width: 0;
-  min-height: 24px;
+  min-height: calc(1.5 * var(--rolled-unit));
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 24px;
+  grid-template-columns: minmax(0, 1fr) calc(1.5 * var(--rolled-unit));
   align-items: center;
-  gap: 8px;
+  gap: calc(0.5 * var(--rolled-unit));
 }
 
 .rolled-control {
   width: 100%;
   min-width: 0;
-  height: 24px;
+  height: calc(1.5 * var(--rolled-unit));
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(0.75 * var(--rolled-unit));
   padding: 0;
   border-radius: 5px;
   background: transparent;
   color: var(--muted);
   text-align: left;
   user-select: none;
+  touch-action: none;
 }
 
 .rolled-control .brand {
   flex: 1;
-  font-size: 12px;
-  letter-spacing: 2px;
+  font-size: calc(0.75 * var(--rolled-unit));
+  letter-spacing: calc(0.125 * var(--rolled-unit));
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .rolled-control .brand-mark {
-  gap: 3px;
-  margin-right: 8px;
-  font-size: 13px;
+  gap: calc(0.1875 * var(--rolled-unit));
+  margin-right: calc(0.5 * var(--rolled-unit));
+  font-size: calc(0.8125 * var(--rolled-unit));
 }
 
 .rolled-control .brand-cursor {
-  width: 2px;
-  height: 10px;
+  width: calc(0.125 * var(--rolled-unit));
+  height: calc(0.625 * var(--rolled-unit));
   border-radius: 1px;
 }
 
 .rolled-content .icon-button {
-  width: 24px;
-  height: 24px;
-  font-size: 11px;
+  width: calc(1.5 * var(--rolled-unit));
+  height: calc(1.5 * var(--rolled-unit));
+  font-size: calc(0.6875 * var(--rolled-unit));
 }
 
 .rolled-hint {
-  flex: 0 0 auto;
-  font-size: 10px;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: calc(0.625 * var(--rolled-unit));
   font-weight: 650;
   line-height: 1;
-  letter-spacing: 1.2px;
+  letter-spacing: calc(0.075 * var(--rolled-unit));
 }
 
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
@@ -982,13 +990,13 @@ button[data-pending="true"],
   .switch-input::before { display: none; }
 
   .warning-copy,
-  .status:not([hidden]) {
+  .status:not([hidden]):not(.sr-only) {
     border: 1px solid Highlight;
     background: Canvas;
     color: CanvasText;
   }
 
-  .status:not([hidden]) { padding: 0.25rem; }
+  .status:not([hidden]):not(.sr-only) { padding: 0.25rem; }
 
   *,
   *::before,

@@ -63,11 +63,12 @@ function isCode(error: unknown, code: string): boolean {
   return commandCode(error).toLowerCase().includes(code.toLowerCase());
 }
 
-function setStatus(element: HTMLElement, message: string, tone: Tone = "neutral", timeout = 0): void {
+function setStatus(element: HTMLElement, message: string, tone: Tone = "neutral", timeout = 0, announceOnly = false): void {
   const activeTimer = statusTimers.get(element);
   if (activeTimer !== undefined) window.clearTimeout(activeTimer);
   element.textContent = message;
   element.dataset.tone = tone;
+  element.classList.toggle("sr-only", announceOnly);
   element.hidden = message.length === 0;
   if (timeout > 0) {
     const timer = window.setTimeout(() => {
@@ -272,6 +273,7 @@ async function startMain(): Promise<void> {
     lastReportedZoom: 0,
     lastAppliedZoom: 100,
     windowViewPending: false,
+    expandAfterResize: false,
     layoutFrame: 0,
   };
 
@@ -317,7 +319,33 @@ async function startMain(): Promise<void> {
   aboutButton.addEventListener("click", () => void openAbout());
   closeButton.addEventListener("click", () => void requestClose());
   rolledCloseButton.addEventListener("click", () => void requestClose());
-  expandButton.addEventListener("click", () => void requestWindowView("expanded"));
+  let railPress: { pointerId: number; x: number; y: number } | null = null;
+  let railDragged = false;
+  expandButton.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || !event.isPrimary) return;
+    railDragged = false;
+    railPress = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+    expandButton.setPointerCapture(event.pointerId);
+  });
+  expandButton.addEventListener("pointermove", (event) => {
+    if (!railPress || event.pointerId !== railPress.pointerId || !(event.buttons & 1)) return;
+    if (Math.hypot(event.clientX - railPress.x, event.clientY - railPress.y) < 5) return;
+    railPress = null;
+    railDragged = true;
+    expandButton.releasePointerCapture(event.pointerId);
+    void invoke("start_window_drag").catch(() => {
+      setStatus(statusElement, "Window drag is not available yet.", "warning", 2400);
+    });
+  });
+  for (const name of ["pointerup", "pointercancel", "lostpointercapture"] as const) {
+    expandButton.addEventListener(name, () => { railPress = null; });
+  }
+  expandButton.addEventListener("click", (event) => {
+    // Native dragging may consume pointerup; reset on the next press, not a timer.
+    // Keyboard/assistive activation has detail 0 and always retains button behavior.
+    if (railDragged && event.detail !== 0) return;
+    void requestWindowView("expanded");
+  });
 
   dragRegion.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
@@ -340,6 +368,7 @@ async function startMain(): Promise<void> {
   });
   window.addEventListener("blur", () => {
     state.active = false;
+    state.expandAfterResize = false;
     state.revealed.clear();
     renderResults();
   });
@@ -838,13 +867,16 @@ async function startMain(): Promise<void> {
   }
 
   async function requestWindowView(next: "expanded" | "rolled", announce = true): Promise<void> {
-    if (state.windowViewPending) return;
+    if (state.windowViewPending) {
+      if (next === "expanded" && announce) state.expandAfterResize = true;
+      return;
+    }
     state.windowViewPending = true;
     const highContrast = highContrastMedia.matches;
     const zoomPercent = zoomSteps[zoomIndex];
     const widthChanged = Math.max(100, zoomPercent) !== Math.max(100, state.lastAppliedZoom);
     const height = state.rolled || widthChanged ? 40 : measuredContentHeight();
-    // Restore width at rail height first, so only the final layout clamps position.
+    // Restore width at the 40px staging height, so only the final layout clamps position.
     state.lastReportedHeight = height;
     state.lastReportedZoom = zoomPercent;
     let applied = false;
@@ -862,7 +894,11 @@ async function startMain(): Promise<void> {
       if (announce) setStatus(statusElement, "Window roll-up is not available yet.", "warning", 2400);
     } finally {
       state.windowViewPending = false;
-      if (highContrast !== highContrastMedia.matches) void requestWindowView("expanded", false);
+      const expandRequested = state.expandAfterResize;
+      state.expandAfterResize = false;
+      if (expandRequested || highContrast !== highContrastMedia.matches) {
+        void requestWindowView("expanded", expandRequested);
+      }
       else if (applied) reportContentHeight();
     }
   }
@@ -879,9 +915,13 @@ async function startMain(): Promise<void> {
     if (state.layoutFrame !== 0) return;
     state.layoutFrame = window.requestAnimationFrame(() => {
       state.layoutFrame = 0;
-      if (state.rolled || state.windowViewPending) return;
-      const height = measuredContentHeight();
+      if (state.windowViewPending) return;
       const zoomPercent = zoomSteps[zoomIndex];
+      if (state.rolled) {
+        if (zoomPercent !== state.lastAppliedZoom) void requestWindowView("rolled", false);
+        return;
+      }
+      const height = measuredContentHeight();
       if (Math.abs(height - state.lastReportedHeight) < 1 && zoomPercent === state.lastReportedZoom) return;
       void requestWindowView("expanded", false);
     });
@@ -991,12 +1031,12 @@ async function startAbout(): Promise<void> {
     if (percent === state.collapsedOpacity) return;
     state.opacityPending = true;
     renderOpacity(percent);
-    setStatus(statusElement, "Changing collapsed opacity\u2026");
+    setStatus(statusElement, "Changing collapsed opacity\u2026", "neutral", 0, true);
     try {
       const accepted = await invoke<number>("set_collapsed_opacity", { percent });
       if (!validCollapsedOpacity(accepted)) throw new Error("invalid_collapsed_opacity");
       state.collapsedOpacity = accepted;
-      setStatus(statusElement, "Collapsed opacity set to " + accepted + "% for this session.", "success", 2600);
+      setStatus(statusElement, "Collapsed opacity set to " + accepted + "% for this session.", "success", 2600, true);
     } catch {
       setStatus(statusElement, "Collapsed opacity could not be changed. Try again.", "error");
     } finally {
@@ -1058,7 +1098,7 @@ async function startAbout(): Promise<void> {
       if (!parsed) throw new Error("invalid_status");
       state.clipboardStatus = parsed;
       renderSettings();
-      setStatus(statusElement, "Clipboard release timer set to " + seconds + " seconds.", "success", 2600);
+      setStatus(statusElement, "Clipboard release timer set to " + seconds + " seconds.", "success", 2600, true);
     } catch {
       setStatus(statusElement, "Clipboard release timer could not be changed.", "error");
     } finally {
