@@ -542,7 +542,6 @@ async function startMain(): Promise<void> {
 
   async function generate(): Promise<void> {
     if (state.generationOperation !== null) return;
-    if (!state.groups.lowercase && !state.groups.uppercase && !state.groups.numbers && !state.groups.symbols) return;
     normalizeInputs();
     const reservedHeight = expandedContent.getBoundingClientRect().height;
     let operation: number;
