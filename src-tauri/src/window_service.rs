@@ -4,8 +4,8 @@ use tauri::{LogicalPosition, LogicalSize, WebviewWindow};
 
 pub const MAIN_WIDTH: f64 = 400.0;
 pub const ROLLED_HEIGHT: f64 = 40.0;
-pub const ABOUT_WIDTH: f64 = 320.0;
-pub const ABOUT_HEIGHT: f64 = 480.0;
+pub const ABOUT_WIDTH: f64 = 360.0;
+pub const ABOUT_HEIGHT: f64 = 400.0;
 pub const ABOUT_GAP: f64 = 14.0;
 pub const REDACTION_DELAY: Duration = Duration::from_millis(250);
 pub const EXIT_CLEANUP_DELAY: Duration = Duration::from_secs(2);
@@ -83,17 +83,23 @@ impl From<tauri::Error> for WindowServiceError {
 pub fn main_bounds(
     view: View,
     measured_content_height: f64,
+    zoom_percent: i32,
     current_x: f64,
     current_y: f64,
     work_area: LogicalBounds,
 ) -> Result<LogicalBounds, WindowServiceError> {
     validate_content_height(measured_content_height)?;
+    validate_zoom_percent(zoom_percent)?;
+    let width = match view {
+        View::Expanded => MAIN_WIDTH * f64::from(zoom_percent.max(100)) / 100.0,
+        View::Rolled => MAIN_WIDTH,
+    };
     let height = match view {
         View::Expanded => measured_content_height.ceil(),
         View::Rolled => ROLLED_HEIGHT,
     };
     clamp_bounds(
-        LogicalBounds::new(current_x, current_y, MAIN_WIDTH, height),
+        LogicalBounds::new(current_x, current_y, width, height),
         work_area,
     )
 }
@@ -129,6 +135,7 @@ pub fn set_main_view(
     window: &WebviewWindow,
     view: View,
     measured_content_height: f64,
+    zoom_percent: i32,
 ) -> Result<LogicalBounds, WindowServiceError> {
     require_label(window, MAIN_LABEL)?;
     let (scale_factor, work_area) = current_work_area(window)?;
@@ -136,6 +143,7 @@ pub fn set_main_view(
     let bounds = main_bounds(
         view,
         measured_content_height,
+        zoom_percent,
         position.x,
         position.y,
         work_area,
@@ -180,6 +188,14 @@ pub fn place_about(
     let bounds = about_bounds(main_bounds, work_area)?;
     apply_bounds_at_scale(about, bounds, scale_factor)?;
     Ok(bounds)
+}
+
+pub fn validate_zoom_percent(percent: i32) -> Result<(), WindowServiceError> {
+    if matches!(percent, 75 | 90 | 100 | 110 | 125 | 150 | 175 | 200) {
+        Ok(())
+    } else {
+        Err(WindowServiceError::InvalidGeometry)
+    }
 }
 
 fn validate_content_height(height: f64) -> Result<(), WindowServiceError> {
@@ -407,6 +423,7 @@ impl Coordinator {
         self.pending_roll
     }
 
+    #[cfg(test)]
     pub const fn is_rolled(&self) -> bool {
         self.rolled
     }
@@ -614,17 +631,84 @@ mod tests {
     fn validates_and_clamps_main_sizes() {
         for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, 0.0, -1.0] {
             assert!(matches!(
-                main_bounds(View::Expanded, invalid, 0.0, 0.0, WORK_AREA),
+                main_bounds(View::Expanded, invalid, 100, 0.0, 0.0, WORK_AREA),
                 Err(WindowServiceError::InvalidContentHeight)
             ));
         }
 
         let small_area = LogicalBounds::new(10.0, 20.0, 400.0, 300.0);
-        let expanded = main_bounds(View::Expanded, 700.2, 900.0, 900.0, small_area).unwrap();
+        let expanded = main_bounds(View::Expanded, 700.2, 100, 900.0, 900.0, small_area).unwrap();
         assert_eq!(expanded, LogicalBounds::new(10.0, 20.0, 400.0, 300.0));
 
-        let rolled = main_bounds(View::Rolled, 700.2, 50.0, 500.0, small_area).unwrap();
+        let rolled = main_bounds(View::Rolled, 700.2, 100, 50.0, 500.0, small_area).unwrap();
         assert_eq!(rolled, LogicalBounds::new(10.0, 280.0, 400.0, 40.0));
+    }
+
+    #[test]
+    fn zoom_scales_expanded_width_and_preserves_rolled_size() {
+        for (zoom, width) in [
+            (75, 400.0),
+            (90, 400.0),
+            (100, 400.0),
+            (110, 440.0),
+            (125, 500.0),
+            (150, 600.0),
+            (175, 700.0),
+            (200, 800.0),
+        ] {
+            assert_eq!(
+                main_bounds(View::Expanded, 640.2, zoom, 100.0, 120.0, WORK_AREA).unwrap(),
+                LogicalBounds::new(100.0, 120.0, width, 641.0)
+            );
+            assert_eq!(
+                main_bounds(View::Rolled, 640.2, zoom, 100.0, 120.0, WORK_AREA).unwrap(),
+                LogicalBounds::new(100.0, 120.0, 400.0, 40.0)
+            );
+        }
+    }
+
+    #[test]
+    fn unsupported_zoom_values_are_rejected_for_both_views() {
+        for zoom in [
+            i32::MIN,
+            -1,
+            0,
+            74,
+            76,
+            99,
+            101,
+            124,
+            126,
+            149,
+            199,
+            201,
+            i32::MAX,
+        ] {
+            for view in [View::Expanded, View::Rolled] {
+                assert!(matches!(
+                    main_bounds(view, 640.0, zoom, 0.0, 0.0, WORK_AREA),
+                    Err(WindowServiceError::InvalidGeometry)
+                ));
+            }
+        }
+    }
+
+    #[test]
+    fn zoomed_bounds_clamp_negative_work_areas_and_keep_fitting_anchor() {
+        let small_area = LogicalBounds::new(-1200.0, -800.0, 600.0, 300.0);
+        assert_eq!(
+            main_bounds(View::Expanded, 700.2, 200, -1100.0, -750.0, small_area).unwrap(),
+            small_area
+        );
+        assert_eq!(
+            main_bounds(View::Rolled, 700.2, 200, -1100.0, -750.0, small_area).unwrap(),
+            LogicalBounds::new(-1100.0, -750.0, 400.0, 40.0)
+        );
+        let large_area = LogicalBounds::new(-1920.0, -1080.0, 1920.0, 1080.0);
+        assert_eq!(
+            main_bounds(View::Expanded, 600.2, 200, -1500.0, -900.0, large_area).unwrap(),
+            LogicalBounds::new(-1500.0, -900.0, 800.0, 601.0)
+        );
     }
 
     #[test]
@@ -636,7 +720,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             right,
-            LogicalBounds::new(100.0 + MAIN_WIDTH + ABOUT_GAP, 120.0, 320.0, 480.0)
+            LogicalBounds::new(100.0 + MAIN_WIDTH + ABOUT_GAP, 120.0, 360.0, 400.0)
         );
 
         let left = about_bounds(
@@ -644,7 +728,7 @@ mod tests {
             WORK_AREA,
         )
         .unwrap();
-        assert_eq!(left, LogicalBounds::new(1166.0, 600.0, 320.0, 480.0));
+        assert_eq!(left, LogicalBounds::new(1126.0, 680.0, 360.0, 400.0));
 
         let narrow_work_area = LogicalBounds::new(0.0, 0.0, 700.0, 1080.0);
         let below = about_bounds(
@@ -652,14 +736,14 @@ mod tests {
             narrow_work_area,
         )
         .unwrap();
-        assert_eq!(below, LogicalBounds::new(150.0, 414.0, 320.0, 480.0));
+        assert_eq!(below, LogicalBounds::new(150.0, 414.0, 360.0, 400.0));
 
         let above = about_bounds(
             LogicalBounds::new(150.0, 780.0, MAIN_WIDTH, 300.0),
             narrow_work_area,
         )
         .unwrap();
-        assert_eq!(above, LogicalBounds::new(150.0, 286.0, 320.0, 480.0));
+        assert_eq!(above, LogicalBounds::new(150.0, 366.0, 360.0, 400.0));
     }
 
     #[test]
@@ -668,7 +752,7 @@ mod tests {
         let main = LogicalBounds::new(0.0, 0.0, 400.0, 300.0);
         assert_eq!(
             about_bounds(main, work_area).unwrap(),
-            LogicalBounds::new(80.0, 0.0, 320.0, 300.0)
+            LogicalBounds::new(40.0, 0.0, 360.0, 300.0)
         );
     }
 

@@ -125,6 +125,7 @@ enum CommandError {
     RowOutOfRange,
     StaleViewEpoch,
     InvalidTimeout,
+    InvalidCollapsedOpacity,
     ClipboardUnavailable,
     ClipboardCopyFailed,
     ClipboardDestructiveFailure,
@@ -299,6 +300,8 @@ struct WindowState {
     coordinator: window_service::Coordinator,
     close: window_service::CloseReducer,
     expanded_height: f64,
+    zoom_percent: i32,
+    collapsed_opacity_percent: i32,
     about_creating: bool,
     cleanup_epoch: Option<u64>,
     cleanup_deadline: Option<Instant>,
@@ -312,6 +315,8 @@ impl Default for WindowState {
             coordinator: window_service::Coordinator::default(),
             close: window_service::CloseReducer::default(),
             expanded_height: 640.0,
+            zoom_percent: 100,
+            collapsed_opacity_percent: 50,
             about_creating: false,
             cleanup_epoch: None,
             cleanup_deadline: None,
@@ -320,6 +325,25 @@ impl Default for WindowState {
         }
     }
 }
+
+impl WindowState {
+    fn set_collapsed_opacity(
+        &mut self,
+        percent: i32,
+        notify: impl FnOnce(i32) -> CommandResult,
+    ) -> Result<i32, CommandError> {
+        if self.close.is_closing() {
+            return Err(CommandError::CloseInProgress);
+        }
+        if !(25..=75).contains(&percent) || percent % 5 != 0 {
+            return Err(CommandError::InvalidCollapsedOpacity);
+        }
+        notify(percent)?;
+        self.collapsed_opacity_percent = percent;
+        Ok(percent)
+    }
+}
+
 struct AppState {
     sensitive: Mutex<SensitiveState>,
     windows: Mutex<WindowState>,
@@ -609,9 +633,11 @@ fn set_window_view(
     view: WindowView,
     high_contrast: bool,
     content_height: f64,
+    zoom_percent: i32,
 ) -> CommandResult {
     require_label(&window, &["main"])?;
-    let (native_view, measured_height, effects) = {
+    window_service::validate_zoom_percent(zoom_percent)?;
+    let (native_view, effects) = {
         let mut windows = state.lock_windows()?;
         if windows.close.is_closing() {
             return Err(CommandError::CloseInProgress);
@@ -624,21 +650,14 @@ fn set_window_view(
             }
             WindowView::Rolled => window_service::View::Rolled,
         };
-        let measured = if requested == window_service::View::Expanded
-            && windows.coordinator.is_rolled()
-            && content_height <= window_service::ROLLED_HEIGHT + 1.0
-        {
-            windows.expanded_height
-        } else {
-            content_height
-        };
-        (requested, measured, effects)
+        (requested, effects)
     };
 
-    window_service::set_main_view(&window, native_view, measured_height)?;
+    window_service::set_main_view(&window, native_view, content_height, zoom_percent)?;
     let mut windows = state.lock_windows()?;
+    windows.zoom_percent = zoom_percent;
     if native_view == window_service::View::Expanded {
-        windows.expanded_height = measured_height.ceil();
+        windows.expanded_height = content_height.ceil();
     }
     windows.coordinator.note_view(native_view);
     drop(windows);
@@ -664,6 +683,25 @@ fn notify_clipboard_status_changed(app: &AppHandle) {
     if let Some(main) = app.get_webview_window("main") {
         let _ = main.eval(CLIPBOARD_STATUS_CHANGED_SCRIPT);
     }
+}
+
+#[tauri::command]
+async fn set_collapsed_opacity(
+    window: WebviewWindow,
+    app: AppHandle,
+    state: State<'_, AppState>,
+    percent: i32,
+) -> Result<i32, CommandError> {
+    require_label(&window, &["about"])?;
+    let main = app
+        .get_webview_window("main")
+        .ok_or(CommandError::WindowUnavailable)?;
+    state.lock_windows()?.set_collapsed_opacity(percent, |accepted| {
+        main.eval(format!(
+            "window.dispatchEvent(new CustomEvent('localpass:collapsed-opacity',{{detail:{accepted}}}));"
+        ))
+        .map_err(|_| CommandError::WindowUnavailable)
+    })
 }
 
 #[tauri::command]
@@ -746,12 +784,16 @@ fn surface_for_window(window: &WebviewWindow) -> Result<Surface, CommandError> {
 
 fn apply_effects(app: &AppHandle, effects: Effects) {
     let state = app.state::<AppState>();
-    let (expanded_height, closing) = {
+    let (expanded_height, zoom_percent, closing) = {
         let windows = state
             .windows
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        (windows.expanded_height, windows.close.is_closing())
+        (
+            windows.expanded_height,
+            windows.zoom_percent,
+            windows.close.is_closing(),
+        )
     };
     if closing {
         return;
@@ -765,6 +807,7 @@ fn apply_effects(app: &AppHandle, effects: Effects) {
                     &main,
                     window_service::View::Rolled,
                     expanded_height,
+                    zoom_percent,
                 );
             }
             ViewAction::Unchanged => {}
@@ -871,7 +914,7 @@ fn open_about_window(
         return Ok(());
     }
 
-    let effects = {
+    let (effects, collapsed_opacity_percent) = {
         let mut windows = state.lock_windows()?;
         if windows.close.is_closing() {
             return Err(CommandError::CloseInProgress);
@@ -880,7 +923,10 @@ fn open_about_window(
             return Err(CommandError::WindowUnavailable);
         }
         windows.about_creating = true;
-        windows.coordinator.set_about_open(true)
+        (
+            windows.coordinator.set_about_open(true),
+            windows.collapsed_opacity_percent,
+        )
     };
     apply_effects(app, effects);
 
@@ -893,8 +939,13 @@ fn open_about_window(
             .find(|window| window.label == "about")
             .cloned()
             .ok_or(CommandError::WindowUnavailable)?;
-        config.url =
-            WebviewUrl::App(format!("index.html?view=about&theme={}", theme.as_str()).into());
+        config.url = WebviewUrl::App(
+            format!(
+                "index.html?view=about&theme={}&collapsedOpacityPercent={collapsed_opacity_percent}",
+                theme.as_str()
+            )
+            .into(),
+        );
 
         let builder = WebviewWindowBuilder::from_config(app, &config)
             .map_err(|_| CommandError::WindowUnavailable)?
@@ -1216,6 +1267,7 @@ fn main() {
             set_clipboard_timeout,
             set_window_view,
             set_macos_best_effort_clear,
+            set_collapsed_opacity,
             set_pointer_inside,
             set_always_on_top,
             start_window_drag,
@@ -1272,7 +1324,60 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{AppState, CommandError, allowed_navigation};
+    use super::{AppState, CommandError, WindowState, allowed_navigation};
+
+    #[test]
+    fn collapsed_opacity_accepts_only_range_and_step_values() {
+        let mut windows = WindowState::default();
+        assert_eq!(windows.collapsed_opacity_percent, 50);
+        for percent in (25..=75).step_by(5) {
+            assert_eq!(
+                windows
+                    .set_collapsed_opacity(percent, |accepted| {
+                        assert_eq!(accepted, percent);
+                        Ok(())
+                    })
+                    .unwrap(),
+                percent
+            );
+            assert_eq!(windows.collapsed_opacity_percent, percent);
+        }
+        for percent in [i32::MIN, -5, 0, 20, 24, 26, 49, 74, 76, 80, i32::MAX] {
+            assert!(matches!(
+                windows.set_collapsed_opacity(percent, |_| panic!("must not notify")),
+                Err(CommandError::InvalidCollapsedOpacity)
+            ));
+            assert_eq!(windows.collapsed_opacity_percent, 75);
+        }
+    }
+
+    #[test]
+    fn collapsed_opacity_rejection_preserves_session_value() {
+        let mut windows = WindowState::default();
+        windows.set_collapsed_opacity(25, |_| Ok(())).unwrap();
+        assert!(matches!(
+            windows.set_collapsed_opacity(75, |_| Err(CommandError::WindowUnavailable)),
+            Err(CommandError::WindowUnavailable)
+        ));
+        assert_eq!(windows.collapsed_opacity_percent, 25);
+        windows.close.begin_native();
+        assert!(matches!(
+            windows.set_collapsed_opacity(75, |_| panic!("must not notify")),
+            Err(CommandError::CloseInProgress)
+        ));
+        assert_eq!(windows.collapsed_opacity_percent, 25);
+    }
+
+    #[test]
+    fn collapsed_opacity_survives_about_reopen_but_not_a_new_session() {
+        let mut windows = WindowState::default();
+        windows.coordinator.set_about_open(true);
+        windows.set_collapsed_opacity(75, |_| Ok(())).unwrap();
+        windows.coordinator.set_about_open(false);
+        windows.coordinator.set_about_open(true);
+        assert_eq!(windows.collapsed_opacity_percent, 75);
+        assert_eq!(WindowState::default().collapsed_opacity_percent, 50);
+    }
 
     #[test]
     fn navigation_is_exact_and_local() {

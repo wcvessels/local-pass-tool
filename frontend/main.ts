@@ -192,14 +192,14 @@ function applyZoom(status: HTMLElement): void {
   window.dispatchEvent(new CustomEvent("localpass:layout-changed"));
 }
 
-function passwordFitClass(length: number): string {
-  const rawPixels = (280 / Math.max(1, length) - 0.6) / 0.62;
-  const pixels = Math.max(11, Math.min(16, rawPixels));
-  if (rawPixels < 9) return "password-fit-xxs password-display--wrap";
-  if (pixels >= 15.5) return "password-fit-lg";
-  if (pixels >= 13.5) return "password-fit-md";
-  if (pixels >= 12) return "password-fit-sm";
-  return "password-fit-xs";
+function validCollapsedOpacity(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 25 && value <= 75 && value % 5 === 0;
+}
+
+function queryCollapsedOpacity(): number {
+  const value = new URLSearchParams(location.search).get("collapsedOpacityPercent");
+  const percent = value !== null && /^\d+$/.test(value) ? Number(value) : NaN;
+  return validCollapsedOpacity(percent) ? percent : 50;
 }
 
 function queryTheme(): Theme {
@@ -269,6 +269,9 @@ async function startMain(): Promise<void> {
     clipboardStatusEpoch: 0,
     lastSeenReleaseSequence: 0,
     lastReportedHeight: 0,
+    lastReportedZoom: 0,
+    lastAppliedZoom: 100,
+    windowViewPending: false,
     layoutFrame: 0,
   };
 
@@ -341,7 +344,10 @@ async function startMain(): Promise<void> {
     renderResults();
   });
   window.addEventListener("resize", reportContentHeight);
-  window.addEventListener("localpass:layout-changed", reportContentHeight);
+  window.addEventListener("localpass:layout-changed", () => {
+    expandedContent.style.removeProperty("min-height");
+    reportContentHeight();
+  });
   window.addEventListener("localpass:mask-all", () => {
     state.active = false;
     state.revealed.clear();
@@ -350,6 +356,10 @@ async function startMain(): Promise<void> {
   window.addEventListener("localpass:window-view", (event) => {
     const detail = (event as CustomEvent<unknown>).detail;
     if (detail === "rolled" || detail === "expanded") applyWindowView(detail);
+  });
+  window.addEventListener("localpass:collapsed-opacity", (event) => {
+    const percent = (event as CustomEvent<unknown>).detail;
+    if (validCollapsedOpacity(percent)) root.style.setProperty("--collapsed-opacity", String(percent / 100));
   });
   window.addEventListener("localpass:clipboard-status-changed", () => {
     state.clipboardStatusEpoch += 1;
@@ -449,7 +459,6 @@ async function startMain(): Promise<void> {
       reportContentHeight();
       return;
     }
-    const fitClass = passwordFitClass(state.length);
     state.passwords.forEach((password, index) => {
       const number = String(index + 1).padStart(2, "0");
       const visible = state.active && (!state.masked || state.revealed.has(index));
@@ -464,7 +473,7 @@ async function startMain(): Promise<void> {
 
       const display = document.createElement("button");
       display.type = "button";
-      display.className = "password-display mono " + fitClass;
+      display.className = "password-display mono";
       display.draggable = false;
       const canToggleMask = state.active && state.masked;
       display.disabled = !canToggleMask;
@@ -502,6 +511,7 @@ async function startMain(): Promise<void> {
   function redactResults(): number {
     state.clipboardStatusEpoch += 1;
     state.operation += 1;
+    expandedContent.style.removeProperty("min-height");
     resultsList.querySelectorAll<HTMLElement>(".password-text").forEach((element) => {
       element.textContent = "";
     });
@@ -518,6 +528,7 @@ async function startMain(): Promise<void> {
     state.copyOperation = null;
     generateButton.disabled = false;
     generateButton.textContent = "GENERATE";
+    reportContentHeight();
     state.viewEpoch = nextViewEpoch(state.viewEpoch);
     return state.operation;
   }
@@ -533,9 +544,11 @@ async function startMain(): Promise<void> {
     if (state.generationOperation !== null) return;
     if (!state.groups.lowercase && !state.groups.uppercase && !state.groups.numbers && !state.groups.symbols) return;
     normalizeInputs();
+    const reservedHeight = expandedContent.getBoundingClientRect().height;
     let operation: number;
     try {
       operation = redactResults();
+      expandedContent.style.minHeight = reservedHeight + "px";
     } catch {
       setStatus(statusElement, "Generation stopped because the view state could not advance.", "error");
       return;
@@ -584,6 +597,8 @@ async function startMain(): Promise<void> {
         generateButton.disabled = false;
         clearButton.disabled = state.passwords.length === 0;
         generateButton.textContent = "GENERATE";
+        expandedContent.style.removeProperty("min-height");
+        reportContentHeight();
       }
     }
   }
@@ -824,24 +839,38 @@ async function startMain(): Promise<void> {
   }
 
   async function requestWindowView(next: "expanded" | "rolled", announce = true): Promise<void> {
-    const previous = state.rolled ? "rolled" : "expanded";
-    if (next === "expanded") applyWindowView("expanded");
-    const height = measuredContentHeight();
+    if (state.windowViewPending) return;
+    state.windowViewPending = true;
+    const highContrast = highContrastMedia.matches;
+    const zoomPercent = zoomSteps[zoomIndex];
+    const widthChanged = Math.max(100, zoomPercent) !== Math.max(100, state.lastAppliedZoom);
+    const height = state.rolled || widthChanged ? 40 : measuredContentHeight();
+    // Restore width at rail height first, so only the final layout clamps position.
+    state.lastReportedHeight = height;
+    state.lastReportedZoom = zoomPercent;
+    let applied = false;
     try {
       await invoke("set_window_view", {
         view: next,
         contentHeight: height,
-        highContrast: highContrastMedia.matches,
+        zoomPercent,
+        highContrast,
       });
-      if (next === "rolled") applyWindowView("rolled");
+      state.lastAppliedZoom = zoomPercent;
+      applyWindowView(next);
+      applied = true;
     } catch {
-      if (next === "expanded" && previous === "rolled") applyWindowView("rolled");
       if (announce) setStatus(statusElement, "Window roll-up is not available yet.", "warning", 2400);
+    } finally {
+      state.windowViewPending = false;
+      if (highContrast !== highContrastMedia.matches) void requestWindowView("expanded", false);
+      else if (applied) reportContentHeight();
     }
   }
 
   function applyWindowView(next: "expanded" | "rolled"): void {
     state.rolled = next === "rolled";
+    mainView.tabIndex = state.rolled ? -1 : 0;
     shell.classList.toggle("shell--rolled", state.rolled);
     expandedContent.hidden = state.rolled;
     rolledContent.hidden = !state.rolled;
@@ -851,15 +880,11 @@ async function startMain(): Promise<void> {
     if (state.layoutFrame !== 0) return;
     state.layoutFrame = window.requestAnimationFrame(() => {
       state.layoutFrame = 0;
-      if (state.rolled) return;
+      if (state.rolled || state.windowViewPending) return;
       const height = measuredContentHeight();
-      if (Math.abs(height - state.lastReportedHeight) < 1) return;
-      state.lastReportedHeight = height;
-      void invoke("set_window_view", {
-        view: "expanded",
-        contentHeight: height,
-        highContrast: highContrastMedia.matches,
-      }).catch(() => undefined);
+      const zoomPercent = zoomSteps[zoomIndex];
+      if (Math.abs(height - state.lastReportedHeight) < 1 && zoomPercent === state.lastReportedZoom) return;
+      void requestWindowView("expanded", false);
     });
   }
 
@@ -888,6 +913,8 @@ async function startAbout(): Promise<void> {
   const timerMinus = required<HTMLButtonElement>("timer-minus");
   const timerPlus = required<HTMLButtonElement>("timer-plus");
   const timerNote = required<HTMLElement>("timer-note");
+  const opacityRange = required<HTMLInputElement>("collapsed-opacity");
+  const opacityValue = required<HTMLOutputElement>("opacity-value");
   const macSection = required<HTMLElement>("macos-policy");
   const macToggle = required<HTMLInputElement>("macos-clear-toggle");
   const macStatus = required<HTMLElement>("macos-policy-status");
@@ -897,6 +924,8 @@ async function startAbout(): Promise<void> {
     theme: queryTheme(),
     clipboardStatus: null as ClipboardStatus | null,
     timerPending: false,
+    collapsedOpacity: queryCollapsedOpacity(),
+    opacityPending: false,
     macPending: false,
   };
 
@@ -905,6 +934,7 @@ async function startAbout(): Promise<void> {
   root.dataset.theme = state.theme;
   macSection.hidden = !mac;
   macToggle.disabled = true;
+  renderOpacity();
 
   closeButton.addEventListener("click", () => void closeAbout());
   dragRegion.addEventListener("pointerdown", (event) => {
@@ -916,6 +946,18 @@ async function startAbout(): Promise<void> {
   });
   timerMinus.addEventListener("click", () => void changeTimeout(-5));
   timerPlus.addEventListener("click", () => void changeTimeout(5));
+  opacityRange.addEventListener("input", () => {
+    renderOpacity(state.opacityPending ? state.collapsedOpacity : Number(opacityRange.value));
+  });
+  opacityRange.addEventListener("change", () => void changeOpacity(Number(opacityRange.value)));
+  opacityRange.addEventListener("pointerdown", (event) => {
+    if (state.opacityPending) event.preventDefault();
+  });
+  opacityRange.addEventListener("keydown", (event) => {
+    if (state.opacityPending && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
+      event.preventDefault();
+    }
+  });
   macToggle.addEventListener("change", () => void changeMacPolicy(macToggle.checked));
   shell.addEventListener("pointerenter", () => {
     void invoke("set_pointer_inside", { inside: true }).catch(() => undefined);
@@ -928,6 +970,41 @@ async function startAbout(): Promise<void> {
   });
   installShortcutGuards(statusElement);
   await refreshSettings();
+
+  function renderOpacity(percent = state.collapsedOpacity): void {
+    opacityRange.value = String(percent);
+    opacityRange.setAttribute("aria-valuetext", percent + "%");
+    opacityRange.setAttribute("aria-disabled", String(state.opacityPending));
+    opacityRange.setAttribute("aria-busy", String(state.opacityPending));
+    opacityValue.value = percent + "%";
+  }
+
+  async function changeOpacity(percent: number): Promise<void> {
+    if (state.opacityPending) {
+      renderOpacity();
+      return;
+    }
+    if (!validCollapsedOpacity(percent)) {
+      renderOpacity();
+      setStatus(statusElement, "Choose an opacity from 25% to 75% in 5% steps.", "error");
+      return;
+    }
+    if (percent === state.collapsedOpacity) return;
+    state.opacityPending = true;
+    renderOpacity(percent);
+    setStatus(statusElement, "Changing collapsed opacity\u2026");
+    try {
+      const accepted = await invoke<number>("set_collapsed_opacity", { percent });
+      if (!validCollapsedOpacity(accepted)) throw new Error("invalid_collapsed_opacity");
+      state.collapsedOpacity = accepted;
+      setStatus(statusElement, "Collapsed opacity set to " + accepted + "% for this session.", "success", 2600);
+    } catch {
+      setStatus(statusElement, "Collapsed opacity could not be changed. Try again.", "error");
+    } finally {
+      state.opacityPending = false;
+      renderOpacity();
+    }
+  }
 
   async function refreshSettings(): Promise<void> {
     try {
@@ -955,10 +1032,10 @@ async function startAbout(): Promise<void> {
     timerMinus.disabled = state.timerPending || !ready || macOff || seconds <= 5;
     timerPlus.disabled = state.timerPending || !ready || macOff || seconds >= 60;
     timerNote.textContent = !ready
-      ? "Unavailable until native clipboard lifecycle is implemented."
+      ? "Clipboard clearing is unavailable."
       : macOff
         ? "Timer applies after macOS auto-clear is enabled."
-        : "Applies to the active eligible clipboard lease.";
+        : "Applies only to passwords copied with LocalPass.";
     if (mac) {
       macToggle.checked = clipboard?.macos_best_effort_clear ?? false;
       macToggle.disabled = state.macPending || !ready;

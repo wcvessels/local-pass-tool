@@ -9,18 +9,18 @@
     <script type="module" src="/frontend/main.ts"></script>
   </head>
   <body>
-    <main id="main-view" class="app-view" data-view="main" aria-labelledby="main-title" hidden>
+    <main id="main-view" class="app-view" data-view="main" aria-labelledby="main-title" tabindex="0" hidden>
       <section id="main-shell" class="shell" aria-label="LocalPass password generator">
         <div id="rolled-content" class="rolled-content" hidden>
           <button id="expand-button" class="rolled-control" type="button" aria-label="Expand LocalPass">
-            <span class="brand" aria-hidden="true">LOCALPASS</span>
+            <span class="brand" aria-hidden="true"><span class="brand-mark" aria-hidden="true">&#10033;<span class="brand-cursor"></span></span>LOCALPASS</span>
             <span class="rolled-hint">CLICK TO EXPAND</span>
           </button>
           <button id="rolled-close-button" class="icon-button" type="button" aria-label="Close LocalPass" title="Close LocalPass">&#10005;</button>
         </div>
         <div id="expanded-content" class="expanded-content">
           <header id="drag-region" class="titlebar">
-            <h1 id="main-title" class="brand">LOCALPASS</h1>
+            <h1 id="main-title" class="brand"><span class="brand-mark" aria-hidden="true">&#10033;<span class="brand-cursor"></span></span>LOCALPASS</h1>
             <nav class="window-actions" aria-label="Window controls">
               <button id="about-button" class="icon-button" type="button" aria-label="Open About LocalPass" title="About LocalPass">?</button>
               <button id="mask-button" class="icon-button" type="button" aria-label="Mask passwords" aria-pressed="false" title="Mask passwords">&#10033;</button>
@@ -66,43 +66,53 @@
     <main id="about-view" class="app-view app-view--about" data-view="about" aria-labelledby="about-title" hidden>
       <section id="about-shell" class="shell shell--about" aria-label="About LocalPass">
         <header id="about-drag-region" class="titlebar">
-          <h1 id="about-title" class="about-title">ABOUT LOCALPASS</h1>
+          <h1 id="about-title" class="brand"><span class="brand-mark" aria-hidden="true">&#10033;<span class="brand-cursor"></span></span>ABOUT</h1>
           <button id="about-close-button" class="icon-button" type="button" aria-label="Close About LocalPass" title="Close About LocalPass">&#10005;</button>
         </header>
         <div class="divider" aria-hidden="true"></div>
-        <p class="about-copy">Passwords are generated entirely on this machine. Nothing is stored, logged, or sent anywhere.</p>
-        <dl class="help-list">
-          <div><dt>LENGTH &middot; COUNT</dt><dd>Size and number of results.</dd></div>
-          <div><dt>a&ndash;z &hellip; !@#</dt><dd>Toggle character groups.</dd></div>
-          <div><dt>NO 0O1l</dt><dd>Drop look-alike characters.</dd></div>
-          <div><dt>&#10033;</dt><dd>Mask results; activate one to reveal it.</dd></div>
-          <div><dt>&#9673;</dt><dd>Keep the main window on top.</dd></div>
-          <div><dt>Ctrl+G &middot; Ctrl+L</dt><dd>Generate and clear.</dd></div>
-        </dl>
-        <div class="divider" aria-hidden="true"></div>
-        <section class="timer-settings" aria-labelledby="timer-title">
-          <div class="setting-row">
-            <h2 id="timer-title" class="compact-label setting-label">CLIPBOARD RELEASE TIMER</h2>
-            <output id="timer-value" class="setting-value mono">30 S</output>
-            <button id="timer-minus" class="step-button" type="button" aria-label="Reduce clipboard release timer by 5 seconds">&minus;</button>
-            <button id="timer-plus" class="step-button" type="button" aria-label="Increase clipboard release timer by 5 seconds">+</button>
-          </div>
-          <p id="timer-note" class="setting-note">Checking clipboard policy&hellip;</p>
-        </section>
-        <section id="macos-policy" class="macos-policy" aria-labelledby="macos-policy-title" hidden>
-          <div class="toggle-row">
-            <div>
-              <h2 id="macos-policy-title" class="setting-heading">macOS auto-clear</h2>
-              <p id="macos-policy-status" class="setting-note">Off for this session.</p>
+        <div id="about-body" class="about-body" role="region" aria-label="About details and settings" tabindex="0">
+          <p class="about-copy">Generated on this device. Passwords are never stored, logged, or sent anywhere.</p>
+          <dl class="help-list">
+            <div><dt class="compact-label">LENGTH &middot; COUNT</dt><dd>Size and number of results.</dd></div>
+            <div><dt class="mono">a&ndash;z &hellip; !@#</dt><dd>Toggle character groups.</dd></div>
+            <div><dt class="mono">NO 0O1l</dt><dd>Drop look-alike characters.</dd></div>
+            <div><dt>&#10033;</dt><dd>Mask results; activate one to reveal.</dd></div>
+            <div><dt>&#9673;</dt><dd>Keep the window on top.</dd></div>
+            <div><dt class="mono">Ctrl+G &middot; Ctrl+L</dt><dd>Generate and clear.</dd></div>
+          </dl>
+          <div class="divider" aria-hidden="true"></div>
+          <section class="timer-settings" aria-labelledby="timer-title">
+            <div class="setting-row">
+              <h2 id="timer-title" class="compact-label setting-label">CLIPBOARD TIMER</h2>
+              <output id="timer-value" class="setting-value mono">30 S</output>
+              <button id="timer-minus" class="step-button" type="button" aria-label="Reduce clipboard release timer by 5 seconds">&minus;</button>
+              <button id="timer-plus" class="step-button" type="button" aria-label="Increase clipboard release timer by 5 seconds">+</button>
             </div>
-            <label class="switch-label" for="macos-clear-toggle">
-              <span class="sr-only">Enable best-effort macOS clipboard clearing</span>
-              <input id="macos-clear-toggle" class="switch-input" type="checkbox" role="switch" aria-describedby="macos-warning macos-policy-status" />
-            </label>
-          </div>
-          <p id="macos-warning" class="warning-copy">On macOS, auto-clear is off by default. When off, LocalPass does not remove copied passwords on timeout, Clear, regenerate, or close; they remain until something else replaces the clipboard. If enabled, LocalPass checks before clearing, but macOS cannot make that check atomic, so a copy made by another app during that race may also be cleared. Only passwords copied after enabling are affected. This setting resets off when LocalPass exits.</p>
-        </section>
-        <p id="about-status" class="status mono" role="status" aria-live="polite" aria-atomic="true" hidden></p>
+            <p id="timer-note" class="setting-note">Checking clipboard settings&hellip;</p>
+          </section>
+          <section class="opacity-settings" aria-labelledby="opacity-label">
+            <div class="opacity-setting-row">
+              <label id="opacity-label" class="compact-label" for="collapsed-opacity">COLLAPSED OPACITY</label>
+              <output id="opacity-value" class="setting-value mono" for="collapsed-opacity">50%</output>
+            </div>
+            <input id="collapsed-opacity" class="range opacity-range" type="range" min="25" max="75" step="5" value="50" aria-describedby="opacity-note" aria-valuetext="50%" />
+            <p id="opacity-note" class="setting-note">25–75% in 5% steps. Resets to 50% on app exit. High Contrast keeps the window opaque.</p>
+          </section>
+          <section id="macos-policy" class="macos-policy" aria-labelledby="macos-policy-title" hidden>
+            <div class="toggle-row">
+              <div>
+                <h2 id="macos-policy-title" class="compact-label">MACOS AUTO-CLEAR</h2>
+                <p id="macos-policy-status" class="setting-note">Off for this session.</p>
+              </div>
+              <label class="switch-label" for="macos-clear-toggle">
+                <span class="sr-only">Enable best-effort macOS clipboard clearing</span>
+                <input id="macos-clear-toggle" class="switch-input" type="checkbox" role="switch" aria-describedby="macos-warning macos-policy-status" />
+              </label>
+            </div>
+            <p id="macos-warning" class="warning-copy">On macOS, auto-clear is off by default. When off, LocalPass does not remove copied passwords on timeout, Clear, regenerate, or close; they remain until something else replaces the clipboard. If enabled, LocalPass checks before clearing, but macOS cannot make that check atomic, so a copy made by another app during that race may also be cleared. Only passwords copied after enabling are affected. This setting resets off when LocalPass exits.</p>
+          </section>
+          <p id="about-status" class="status mono" role="status" aria-live="polite" aria-atomic="true" hidden></p>
+        </div>
       </section>
     </main>
   </body>

@@ -8,6 +8,7 @@ const COMMANDS: &[&str] = &[
     "set_clipboard_timeout",
     "set_window_view",
     "set_macos_best_effort_clear",
+    "set_collapsed_opacity",
     "set_pointer_inside",
     "set_always_on_top",
     "start_window_drag",

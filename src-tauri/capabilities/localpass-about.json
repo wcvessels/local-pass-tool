@@ -8,6 +8,7 @@
     "allow-clipboard-status",
     "allow-set-clipboard-timeout",
     "allow-set-macos-best-effort-clear",
+    "allow-set-collapsed-opacity",
     "allow-set-pointer-inside",
     "allow-start-window-drag",
     "allow-close-about"
